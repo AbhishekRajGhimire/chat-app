@@ -84,7 +84,11 @@ Frontend runs on **`http://localhost:4200`** and proxies:
 
 I’ll add screenshots here after pushing to GitHub:
 
-- `docs/screenshots/` (planned)
+<img width="1482" height="930" alt="Screenshot 2026-01-29 162735" src="https://github.com/user-attachments/assets/19c5ee4f-9a11-44c4-9080-144538b7f4c3" />
+
+
+<img width="1490" height="965" alt="Screenshot 2026-01-29 161700" src="https://github.com/user-attachments/assets/01c3c183-a51c-482a-9d38-35f7e18cf569" />
+#### I created two test accounts 'avi' and 'gri' to test the messaging.
 
 ### Notes
 
