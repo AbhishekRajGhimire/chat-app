@@ -1,0 +1,31 @@
+<div class="signup-form">
+  <p class="signup-title">Welcome to Chat App</p>
+
+  <div class="signup-content">
+    <mat-toolbar class="signup-toolbar">Sign up to register your account</mat-toolbar>
+    <mat-card>
+      <form [formGroup]="signUpForm" (ngSubmit)="onSubmit()">
+        <mat-form-field>
+          <mat-label>Username</mat-label>
+          <input matInput type="text" id="username" formControlName="username" />
+          <mat-error *ngIf="signUpForm.get('username')?.hasError('required')">* Username is required
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Password</mat-label>
+          <input matInput type="password" id="password" formControlName="password" />
+          <mat-error *ngIf="signUpForm.get('password')?.hasError('required')">* Password is required
+          </mat-error>
+        </mat-form-field>
+        <div>
+          <button type="submit" mat-raised-button color="primary" type="submit" [disabled]="!signUpForm.valid">
+            Sign up
+          </button>
+        </div>
+        <div class="go-to-signin-section">
+          Already registered? <a routerLink="/signin" class="go-to-signin-text">Sign in </a>
+        </div>
+      </form>
+    </mat-card>
+  </div>
+</div>

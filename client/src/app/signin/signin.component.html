@@ -1,0 +1,32 @@
+<div class="signin-form">
+  <p class="signin-title">Welcome to Chat App</p>
+
+  <div class="signin-content">
+    <mat-toolbar class="signin-toolbar">Sign in to your account</mat-toolbar>
+    <mat-card>
+      <form [formGroup]="signInForm" (ngSubmit)="onSubmit()">
+        <mat-form-field>
+          <mat-label>Username</mat-label>
+          <input matInput type="text" id="username" formControlName="username" />
+          <mat-error *ngIf="signInForm.get('username')?.hasError('required')">* Username is required
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Password</mat-label>
+          <input matInput type="password" id="password" formControlName="password" />
+          <mat-error *ngIf="signInForm.get('password')?.hasError('required')">* Password is required
+          </mat-error>
+        </mat-form-field>
+        <div>
+          <button type="submit" mat-raised-button color="primary" type="submit" [disabled]="!signInForm.valid">
+            Sign in
+          </button>
+        </div>
+        <div class="go-to-signup-section">
+          New here? <a routerLink="/signup" class="go-to-signup-text">Sign up </a>
+        </div>
+
+      </form>
+    </mat-card>
+  </div>
+</div>

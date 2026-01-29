@@ -1,0 +1,81 @@
+<mat-toolbar color="primary" class="app-toolbar">Welcome {{ currentUser }}
+    <button mat-raised-button color="warn" class="logout-button" (click)="logout()">
+        Logout
+    </button>
+  </mat-toolbar>
+  
+  <div class="chats-section">
+    <div class="chats-sidebar">
+        <button mat-raised-button color="primary" class="click-search-button" (click)="showSearch()">
+            New Chat
+        </button>
+        <h4 style="margin: 10px">Direct Messages</h4>
+        <mat-list class="chat-users-list">
+            <mat-list-item *ngFor="let user of chatUsers" (click)="selectUser(user)"
+                [ngClass]="{ active: selectedUser === user }">
+                <span *ngIf="user === currentUser">{{user}} (You)</span>
+                <span *ngIf="user != currentUser">{{ user }}</span>
+            </mat-list-item>
+        </mat-list>
+    </div>
+  
+    <div class="chat-and-search-panel">
+        <ng-container *ngIf="!selectedUser">
+            <div class="search-bar-container">
+                <div class="search-bar">
+                    <input matInput class="user-search" placeholder="Search for a user to start a chat"
+                        [(ngModel)]="searchInput" (input)="filterUsers()" />
+                </div>
+                <mat-list class="search-results">
+                    <div *ngIf="filteredUsers.length === 0" style="margin:10px">
+                        No user found!
+  
+                    </div>
+                    <mat-list-item *ngFor="let user of filteredUsers" (click)="selectUser(user)">
+  
+                        <span>{{ user }}</span>
+                    </mat-list-item>
+                </mat-list>
+            </div>
+        </ng-container>
+        <ng-container *ngIf="selectedUser">
+            <h2 style="
+        font-size: 25px !important;
+        margin-left: 10px;
+        border-bottom: 1px solid gray;
+        ">
+                {{ selectedUser || "..." }}
+            </h2>
+            <div class="chat-container">
+                <mat-list class="chat-messages-list">
+                    <mat-list-item *ngFor="let message of chatHistory[selectedUser]">
+                        <ng-container *ngIf="message.from === currentUser">
+                            <div class="sent-message">
+                                <span class="sent-message-display">{{ message.message }}</span>
+                                <div class="message-footer">
+                                    {{ message.from }} - {{ message.datetime }}
+                                </div>
+                            </div>
+                        </ng-container>
+                        <ng-container *ngIf="message.from !== currentUser">
+                            <div class="received-message">
+                                <span class="received-message-display">
+                                    {{ message.message }}
+                                </span>
+                                <div class="message-footer">
+                                    {{ message.from }} - {{ message.datetime }}
+                                </div>
+                            </div>
+                        </ng-container>
+                    </mat-list-item>
+                </mat-list>
+            </div>
+            <div class="message-input">
+                <input matInput [(ngModel)]="newMessage" placeholder="Type a message" />
+                <button mat-raised-button color="primary" (click)="sendMessage()">
+                    Send
+                </button>
+            </div>
+        </ng-container>
+    </div>
+  </div>
