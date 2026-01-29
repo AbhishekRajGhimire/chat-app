@@ -51,7 +51,9 @@ export class ChatComponent implements OnDestroy {
         }
       );
 
-    this.socket = io('https://ed-6129943822073856.educative.run:3000');
+    // Local testing: connect to same-origin Socket.IO.
+    // With `npm run start`, Angular proxies `/socket.io/*` to the backend at :3000.
+    this.socket = io();
     this.socket.on('online_users', (users: any) => {
       if (users.length == 0) {
         this.router.navigate(['/signin']);
@@ -158,6 +160,9 @@ export class ChatComponent implements OnDestroy {
         message: this.newMessage,
         datetime: formattedDatetime,
       };
+      if (!this.chatHistory[this.selectedUser]) {
+        this.chatHistory[this.selectedUser] = [];
+      }
       this.chatHistory[this.selectedUser].push(msg);
 
       const headers = new HttpHeaders().set(
@@ -165,7 +170,8 @@ export class ChatComponent implements OnDestroy {
         'Bearer ' + localStorage.getItem('access_token')
       );
 
-      this.http.post(`/api/post_messages/${this.selectedUser}/&/${this.currentUser}/&/${this.newMessage}`,{headers}).subscribe((data:any)=>console.log(data));;
+      const url = `/api/post_messages/${encodeURIComponent(this.selectedUser)}/&/${encodeURIComponent(this.currentUser)}/&/${encodeURIComponent(this.newMessage)}`;
+      this.http.post(url, {}, { headers }).subscribe((data: any) => console.log(data));
 
       this.newMessage = '';
     } else {

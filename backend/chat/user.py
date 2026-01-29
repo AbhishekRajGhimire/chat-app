@@ -9,13 +9,8 @@ from chat import app, jwt, online_users
 # Task 1: Import database connection instance here
 from .database import connection, cursor
 
-app.config['SECRET_KEY'] = 'your_secret_key_here'
-cors = CORS(app, supports_credentials=True)
-app.config['JWT_SECRET_KEY'] = 'jwt_secret_key_here'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
-app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 bcrypt = Bcrypt(app)
-cors = CORS(app)
+cors = CORS(app, supports_credentials=True)
 
 # Task 3: Add /api/signup route here
 @app.route('/api/signup', methods = ['POST'])
@@ -24,8 +19,8 @@ def signup():
     username = data.get('username')
     password = data.get('password')
     if not username or not password:
-        return jsonify({'error' : invaliddata}), 400
-    cursor.execute("SELECT * FROM user WHERE username=?", (username,))
+        return jsonify({'error' : 'Invalid data'}), 400
+    cursor.execute("SELECT * FROM User WHERE username=?", (username,))
     result = cursor.fetchone()
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     if result:
@@ -34,21 +29,21 @@ def signup():
     cursor.execute("INSERT INTO User (username,password) VALUES (?, ?)",
                 (username, hashed_password))  # Assuming the first column is the ID
     connection.commit()
-    response = jsonify({'message': 'User created cuccessfully'}), 201
+    response = jsonify({'message': 'User created successfully'}), 201
     return response
 # Task 3: Add /api/signin route here
 @app.route('/api/signin', methods = ['POST'])
 def signin():
     data = request.get_json()
     username = data.get('username')
-    password = data.get('passoword')
+    password = data.get('password')
     if not username or not password:
         return jsonify({'error' : 'Invalid data'}), 400
     cursor.execute("SELECT * FROM User WHERE username=?", (username,))
     user = cursor.fetchone()
     connection.commit()
     if user and bcrypt.check_password_hash(user[2], password):
-        access_token = create_access_token(identity = under[1])
+        access_token = create_access_token(identity=username)
         response = jsonify({'message': 'Login successful', 'access_token': access_token, 'username': username})
         for user_tuple in online_users:
             if user_tuple[0] == username:

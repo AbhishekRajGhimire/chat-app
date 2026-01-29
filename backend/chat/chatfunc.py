@@ -14,21 +14,25 @@ cors = CORS(app)
 @app.route('/api/post_messages/<recipient>/&/<sender>/&/<message>', methods=['POST'])
 def postMessage(recipient,sender,message):
     cursor.execute("SELECT * FROM User WHERE username=?", (sender,))
-    sender = cursor.fetchone()
+    sender_user = cursor.fetchone()
     cursor.execute("SELECT * FROM User WHERE username=?", (recipient,))
     recipient_user = cursor.fetchone()
+    if not sender_user or not recipient_user:
+        return jsonify({'error': 'Unknown sender or recipient'}), 400
     cursor.execute("INSERT INTO Message (sender_id, recipient_id, message, timestamp) VALUES (?,?,?,?)",
-                (sender[0], recipient_user[0],message, datetime.datetime.now().isoformat() ))  # Assuming the first column is the ID
+                (sender_user[0], recipient_user[0], message, datetime.datetime.now().isoformat()))  # Assuming the first column is the ID
     connection.commit()
     response = jsonify({'message': 'Message posted successfully'}), 201
     return response
 
 @app.route('/api/message_history/<user1>/&/<user2>', methods=['GET'])
-def get_message_history(recipient, sender):
+def get_message_history(user1, user2):
     cursor.execute("SELECT * FROM User WHERE username=?", (user1,))
-    user1 = cursor.fetchone()
+    user1_row = cursor.fetchone()
     cursor.execute("SELECT * FROM User WHERE username=?", (user2,))
-    user2 = cursor.fetchone()
+    user2_row = cursor.fetchone()
+    if not user1_row or not user2_row:
+        return jsonify([]), 200
     query = '''
         SELECT User.username AS sender, recipient.username AS recipient, Message.message, Message.timestamp
         FROM Message
@@ -36,7 +40,7 @@ def get_message_history(recipient, sender):
         JOIN User AS recipient ON Message.recipient_id = recipient.id
         WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
     '''
-    cursor.execute(query, (user1[0], user2[0], user2[0], user1[0]))
+    cursor.execute(query, (user1_row[0], user2_row[0], user2_row[0], user1_row[0]))
     messages = cursor.fetchall()
     # Store the messages in the desired format
     formatted_messages = []
@@ -56,6 +60,8 @@ def get_message_history(recipient, sender):
 def get_chats_history():
     cursor.execute("SELECT * FROM User WHERE username=?", (get_jwt_identity(),))
     user = cursor.fetchone()
+    if not user:
+        return jsonify([]), 200
     query = '''
         SELECT DISTINCT User.username
         FROM User
@@ -69,7 +75,7 @@ def get_chats_history():
     result = cursor.fetchall()
     connection.commit()
     users_with_chat = [row[0] for row in result]
-    return users_with_chat
+    return jsonify(users_with_chat)
 # Task 9: Handle Socket.IO connection and sent messages here
 @socketio.on('connect')
 def on_connect():

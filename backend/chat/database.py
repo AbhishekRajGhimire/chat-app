@@ -1,7 +1,9 @@
 import sqlite3
-# Task 1: Initialize SQLite Connction here
-connection = sqlite3.connect('chat.db',check_same_thread = flase)
-cursor = connection.cursor
+# Task 1: Initialize SQLite Connection here
+# NOTE: For local testing we keep a single connection (check_same_thread=False)
+# so Flask + SocketIO handlers can share it.
+connection = sqlite3.connect('chat.db', check_same_thread=False)
+cursor = connection.cursor()
 
 # Task 2: Add database tables here
 cursor.execute ('''
@@ -14,14 +16,14 @@ cursor.execute ('''
         
     
 cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Messages
-            id PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS Message (
+            id INTEGER PRIMARY KEY,
             sender_id INTEGER NOT NULL,
             recipient_id INTEGER NOT NULL,
             message TEXT NOT NULL,
             timestamp DATETIME NOT NULL,
-            FOREIGN KEY (sender_id) REFERENCES user (id),
-            FOREIGN KEY (recipient_id) REFERENCES user (id)
+            FOREIGN KEY (sender_id) REFERENCES User (id),
+            FOREIGN KEY (recipient_id) REFERENCES User (id)
         )
     ''')
 

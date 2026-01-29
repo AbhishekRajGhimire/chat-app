@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# virtual environments
+.venv/
+venv/
+env/
+.Python
+
+# build artifacts
+build/
+dist/
+*.egg-info/
+
+# --- Database / local state ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Node / Angular ---
+node_modules/
+dist/
+.angular/
+.nx/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
