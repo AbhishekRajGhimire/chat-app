@@ -36,6 +36,10 @@ client/
     proxy.conf.json      # dev proxy for /api and /socket.io
 ```
 
+### System design
+
+- See `docs/system-design.md` for a high-level architecture diagram and request flows.
+
 ### Local setup (Windows / PowerShell)
 
 #### Prerequisites
