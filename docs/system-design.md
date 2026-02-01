@@ -6,27 +6,35 @@
 flowchart LR
   U[User in browser] -->|Loads SPA| A[Angular app<br/>:4200]
 
-  A <-->|REST JSON<br/>/api/*| B[Flask API<br/>:3000]
-  A <-->|Socket.IO<br/>/socket.io/*| S[Flask-SocketIO<br/>:3000]
-
-  subgraph Backend[Backend (Python)]
-    B
-    S
-    M[(SQLite<br/>chat.db)]
-    P[In-memory presence<br/>online_users[]]
+  subgraph FE[Frontend]
+    A
+    LS[(localStorage<br/>access_token + username)]
+    PX[Angular dev proxy<br/>proxy.conf.json]
   end
 
-  B -->|Create/verify JWT| J[JWT (access_token)]
-  A -->|Stores token| LS[localStorage<br/>access_token + username]
-  LS -->|Authorization: Bearer ...| B
+  subgraph BE[Backend (Python)]
+    API[Flask API<br/>:3000]
+    WS[Flask-SocketIO<br/>:3000]
+    DB[(SQLite<br/>chat.db)]
+    PRES[In-memory presence<br/>online_users[]]
+  end
 
-  B -->|Read/write users/messages| M
-  S -->|Broadcast online users| A
-  S -->|Emit receive_message<br/>to recipient socket| A
-  B --> P
-  S --> P
+  A <-->|REST JSON<br/>/api/*| API
+  A <-->|Socket.IO<br/>/socket.io/*| WS
 
-  A -.dev only.->|Angular proxy forwards to :3000| PX[proxy.conf.json]
+  A -->|Stores token| LS
+  LS -->|Authorization: Bearer ...| API
+
+  API -->|Read/write users/messages| DB
+  API --> PRES
+  WS --> PRES
+
+  WS -->|Broadcast online users| A
+  WS -->|Emit receive_message<br/>to recipient socket| A
+
+  A -.dev only.-> PX
+  PX -->|Forwards to :3000| API
+  PX -->|Forwards to :3000| WS
 ```
 
 ### What happens when…
