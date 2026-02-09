@@ -36,3 +36,6 @@ pnpm-debug.log*
 Thumbs.db
 Desktop.ini
 
+# --- Personal notes (do not commit) ---
+docs/personal-notes.md
+
