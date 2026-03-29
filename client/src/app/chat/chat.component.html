@@ -47,28 +47,21 @@
                 {{ selectedUser || "..." }}
             </h2>
             <div class="chat-container">
-                <mat-list class="chat-messages-list">
-                    <mat-list-item *ngFor="let message of chatHistory[selectedUser]">
-                        <ng-container *ngIf="message.from === currentUser">
-                            <div class="sent-message">
-                                <span class="sent-message-display">{{ message.message }}</span>
-                                <div class="message-footer">
-                                    {{ message.from }} - {{ message.datetime }}
-                                </div>
+                <div class="message-thread">
+                    <div
+                        *ngFor="let message of chatHistory[selectedUser] || []"
+                        class="message-row"
+                        [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
+                        <div
+                            class="message-bubble"
+                            [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
+                            <div class="message-bubble__text">{{ message.message }}</div>
+                            <div class="message-bubble__meta">
+                                {{ message.from }} · {{ message.datetime }}
                             </div>
-                        </ng-container>
-                        <ng-container *ngIf="message.from !== currentUser">
-                            <div class="received-message">
-                                <span class="received-message-display">
-                                    {{ message.message }}
-                                </span>
-                                <div class="message-footer">
-                                    {{ message.from }} - {{ message.datetime }}
-                                </div>
-                            </div>
-                        </ng-container>
-                    </mat-list-item>
-                </mat-list>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="message-input">
                 <input matInput [(ngModel)]="newMessage" placeholder="Type a message" />
