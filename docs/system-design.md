@@ -4,19 +4,19 @@
 
 ```mermaid
 flowchart LR
-  U[User in browser] -->|Loads SPA| A[Angular app<br/>:4200]
+  U["User (browser)"] -->|Loads SPA| A["Angular app\n:4200"]
 
   subgraph FE[Frontend]
     A
-    LS[(localStorage<br/>access_token + username)]
-    PX[Angular dev proxy<br/>proxy.conf.json]
+    LS["localStorage\naccess_token + username"]
+    PX["Angular dev proxy\nproxy.conf.json"]
   end
 
-  subgraph BE[Backend (Python)]
-    API[Flask API<br/>:3000]
-    WS[Flask-SocketIO<br/>:3000]
-    DB[(SQLite<br/>chat.db)]
-    PRES[In-memory presence<br/>online_users[]]
+  subgraph BE["Backend (Python)"]
+    API["Flask API\n:3000"]
+    WS["Flask-SocketIO\n:3000"]
+    DB[(SQLite\nchat.db)]
+    PRES["In-memory presence\nonline_users[]"]
   end
 
   A <-->|REST JSON<br/>/api/*| API
