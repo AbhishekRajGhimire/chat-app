@@ -76,6 +76,21 @@ def get_chats_history():
     connection.commit()
     users_with_chat = [row[0] for row in result]
     return jsonify(users_with_chat)
+
+
+@app.route('/api/directory_users', methods=['GET'])
+@jwt_required()
+def directory_users():
+    """All registered usernames except the current user (for New Chat search)."""
+    me = get_jwt_identity()
+    cursor.execute(
+        'SELECT username FROM User WHERE username != ? ORDER BY username COLLATE NOCASE',
+        (me,),
+    )
+    rows = cursor.fetchall()
+    return jsonify([row[0] for row in rows])
+
+
 # Task 9: Handle Socket.IO connection and sent messages here
 @socketio.on('connect')
 def on_connect():

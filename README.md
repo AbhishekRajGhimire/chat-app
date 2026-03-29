@@ -85,6 +85,7 @@ Frontend runs on **`http://localhost:4200`** and proxies:
 - `POST /api/signin`
 - `POST /api/signout` (JWT required)
 - `GET /api/chats_history` (JWT required)
+- `GET /api/directory_users` (JWT required) — all registered usernames except you (for New Chat search)
 - `GET /api/message_history/<user1>/&/<user2>`
 - `POST /api/post_messages/<recipient>/&/<sender>/&/<message>`
 

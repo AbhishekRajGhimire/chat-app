@@ -4,7 +4,7 @@
     </button>
   </mat-toolbar>
   
-  <div class="chats-section">
+  <div class="chats-section" [class.chat-detail-active]="!!selectedUser">
     <div class="chats-sidebar">
         <button mat-raised-button color="primary" class="click-search-button" (click)="showSearch()">
             New Chat
@@ -23,29 +23,34 @@
         <ng-container *ngIf="!selectedUser">
             <div class="search-bar-container">
                 <div class="search-bar">
-                    <input matInput class="user-search" placeholder="Search for a user to start a chat"
+                    <input matInput class="user-search" placeholder="Search registered users (online or offline)"
                         [(ngModel)]="searchInput" (input)="filterUsers()" />
                 </div>
                 <mat-list class="search-results">
-                    <div *ngIf="filteredUsers.length === 0" style="margin:10px">
-                        No user found!
-  
+                    <div *ngIf="!directoryLoaded" class="search-results__hint">
+                        Loading contacts…
+                    </div>
+                    <div *ngIf="directoryLoaded && directoryUsers.length === 0" class="search-results__hint">
+                        No other users registered yet.
+                    </div>
+                    <div *ngIf="directoryLoaded && directoryUsers.length > 0 && filteredUsers.length === 0 && searchInput.trim()" class="search-results__hint">
+                        No user matches your search.
                     </div>
                     <mat-list-item *ngFor="let user of filteredUsers" (click)="selectUser(user)">
-  
-                        <span>{{ user }}</span>
+                        <span class="search-result-name">{{ user }}</span>
+                        <span *ngIf="isUserOnline(user)" class="search-result-online">Online</span>
                     </mat-list-item>
                 </mat-list>
             </div>
         </ng-container>
         <ng-container *ngIf="selectedUser">
-            <h2 style="
-        font-size: 25px !important;
-        margin-left: 10px;
-        border-bottom: 1px solid gray;
-        ">
-                {{ selectedUser || "..." }}
-            </h2>
+            <div class="chat-header">
+                <button type="button" mat-icon-button class="chat-back" (click)="backToInbox()" aria-label="Back to inbox">
+                    <mat-icon>arrow_back</mat-icon>
+                </button>
+                <h2 class="chat-header__title">{{ selectedUser }}</h2>
+                <span *ngIf="isUserOnline(selectedUser)" class="chat-header__presence">Online</span>
+            </div>
             <div class="chat-container">
                 <div class="message-thread">
                     <div
