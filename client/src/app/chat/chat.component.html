@@ -1,4 +1,11 @@
-<mat-toolbar color="primary" class="app-toolbar">Welcome {{ currentUser }}
+<mat-toolbar color="primary" class="app-toolbar">
+    <div class="app-toolbar__brand">
+      <span class="app-toolbar__lockup">
+        <span class="app-toolbar__name">Rojin</span><span class="app-toolbar__rest"> : the org chat</span>
+      </span>
+    </div>
+    <span class="app-toolbar__spacer"></span>
+    <span class="app-toolbar__user">Welcome, {{ currentUser }}</span>
     <button mat-raised-button color="warn" class="logout-button" (click)="logout()">
         Logout
     </button>

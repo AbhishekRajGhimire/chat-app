@@ -8,14 +8,51 @@
 .app-toolbar {
   background-color: #2b0a2c !important;
   font-family: "Montserrat", sans-serif !important;
-  justify-content: space-between
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
+.app-toolbar__brand {
+  display: flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.app-toolbar__lockup {
+  font-family: "Montserrat", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.app-toolbar__name {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.app-toolbar__rest {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.app-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.app-toolbar__user {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
 }
 
 .logout-button {
-  margin-left: 10px;
+  margin-left: 4px;
   font-family: "Montserrat", sans-serif !important;
-
+  flex-shrink: 0;
 }
 
 .mat-toolbar-row,
@@ -395,6 +432,15 @@ input:focus{
 
 }
 @media only screen and (max-width: 768px) {
+  .app-toolbar__user {
+    max-width: min(52vw, 160px);
+    font-size: 13px;
+  }
+
+  .app-toolbar__rest {
+    display: none;
+  }
+
   .message-bubble {
     max-width: min(92%, 100%);
   }
