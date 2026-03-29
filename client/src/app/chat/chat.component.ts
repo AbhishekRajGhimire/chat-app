@@ -1,8 +1,15 @@
-import { Component, NgZone, OnDestroy } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  NgZone,
+  OnDestroy,
+  ViewChild,
+} from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import { Router } from '@angular/router';
 import { io } from 'socket.io-client';
+import { finalize } from 'rxjs/operators';
 
 interface Message {
   from: string;
@@ -17,6 +24,9 @@ interface Message {
   styleUrls: ['./chat.component.scss'],
 })
 export class ChatComponent implements OnDestroy {
+  @ViewChild('messageScrollHost')
+  private messageScrollHost?: ElementRef<HTMLElement>;
+
   currentUser: any;
   chatUsers: string[] = [];
   chatHistory: { [username: string]: Message[] } = {};
@@ -29,6 +39,8 @@ export class ChatComponent implements OnDestroy {
   selectedUser: string = ''; // to store the user selected for direct messages
   searchInput = '';
   newMessage = '';
+  /** True while `post_messages` request is in flight (prevents double send). */
+  isSendingMessage = false;
 
   constructor(
     private http: HttpClient,
@@ -67,29 +79,43 @@ export class ChatComponent implements OnDestroy {
     // Local testing: connect to same-origin Socket.IO.
     // With `npm run start`, Angular proxies `/socket.io/*` to the backend at :3000.
     this.socket = io();
+    this.socket.on('connect', () => {
+      this.zone.run(() => {
+        if (this.currentUser) {
+          this.socket.emit('join_user', { username: this.currentUser });
+        }
+      });
+    });
     this.socket.on('online_users', (users: any) => {
       this.zone.run(() => {
         this.onlineUsers = Array.isArray(users) ? users : [];
         this.applyNewChatFilter();
       });
-    }),
+    });
 
     this.socket.on('receive_message', (data: any) => {
       this.zone.run(() => {
+        if (!data?.username || data.message === undefined || data.message === null) {
+          return;
+        }
+        const from = String(data.username);
         const messageDate = new Date(data.datetime);
-        const formattedDate = messageDate.toLocaleString();
+        const formattedDate = Number.isNaN(messageDate.getTime())
+          ? String(data.datetime)
+          : messageDate.toLocaleString();
         const msg: Message = {
-          from: data.username,
+          from,
           to: this.currentUser,
-          message: data.message,
+          message: String(data.message),
           datetime: formattedDate,
         };
-        if (!this.chatHistory[data.username]) {
-          this.chatHistory[data.username] = [];
+        const prev = this.chatHistory[from] ?? [];
+        this.chatHistory = { ...this.chatHistory, [from]: [...prev, msg] };
+        if (from === this.selectedUser) {
+          this.scrollThreadToBottom();
         }
-        this.chatHistory[data.username].push(msg);
       });
-    })
+    });
 
     this.socket.connect();
   }
@@ -135,6 +161,30 @@ export class ChatComponent implements OnDestroy {
     return this.onlineUsers.some((u: any[]) => u[0] === username && u[1]);
   }
 
+  /** Scroll the open conversation panel to the latest message (after DOM update). */
+  private scrollThreadToBottom(): void {
+    setTimeout(() => {
+      const el = this.messageScrollHost?.nativeElement;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+  }
+
+  onComposerKeydown(event: KeyboardEvent): void {
+    if (this.isSendingMessage) {
+      return;
+    }
+    if (event.key !== 'Enter') {
+      return;
+    }
+    if (event.shiftKey) {
+      return;
+    }
+    event.preventDefault();
+    this.sendMessage();
+  }
+
   selectUser(username: any): void {
     this.selectedUser = username;
     this.searchInput = '';
@@ -150,7 +200,11 @@ export class ChatComponent implements OnDestroy {
       )
       .subscribe(
         (data) => {
-          this.chatHistory[username] = data;
+          this.chatHistory = {
+            ...this.chatHistory,
+            [username]: data ?? [],
+          };
+          this.scrollThreadToBottom();
         },
         (error) => {
           if (error.status === 401 || error.status === 422) {
@@ -171,25 +225,20 @@ export class ChatComponent implements OnDestroy {
   }
 
   sendMessage(): void {
-    if (!this.newMessage || !this.selectedUser) {
+    if (this.isSendingMessage || !this.newMessage.trim() || !this.selectedUser) {
       return;
     }
-    const foundPair = this.onlineUsers.find(
-      (user: any[]) => user[0] === this.selectedUser
-    );
-    const recipientSid = foundPair?.[1];
-    if (recipientSid) {
-      this.socket.emit('send_message', {
-        from: this.currentUser,
-        recipientsid: recipientSid,
-        message: this.newMessage,
-      });
-    }
+    const text = this.newMessage;
+    const peer = this.selectedUser;
+
+    this.socket.emit('send_message', {
+      from: this.currentUser,
+      recipient: peer,
+      message: text,
+    });
 
     const today = new Date();
     const formattedDatetime = today.toISOString();
-    const text = this.newMessage;
-    const peer = this.selectedUser;
 
     const msg: Message = {
       from: this.currentUser,
@@ -197,33 +246,42 @@ export class ChatComponent implements OnDestroy {
       message: text,
       datetime: formattedDatetime,
     };
-    if (!this.chatHistory[peer]) {
-      this.chatHistory[peer] = [];
-    }
-    this.chatHistory[peer].push(msg);
+    const threadBefore = this.chatHistory[peer] ?? [];
+    this.chatHistory = {
+      ...this.chatHistory,
+      [peer]: [...threadBefore, msg],
+    };
+    this.scrollThreadToBottom();
+
+    this.isSendingMessage = true;
+    this.newMessage = '';
 
     const headers = new HttpHeaders().set(
       'Authorization',
       'Bearer ' + localStorage.getItem('access_token')
     );
     const url = `/api/post_messages/${encodeURIComponent(peer)}/&/${encodeURIComponent(this.currentUser)}/&/${encodeURIComponent(text)}`;
-    this.http.post(url, {}, { headers }).subscribe({
-      next: () => {
-        if (!this.chatUsers.includes(peer)) {
-          this.chatUsers = [...this.chatUsers, peer];
-        }
-      },
-      error: (err) => {
-        const thread = this.chatHistory[peer];
-        if (thread?.length && thread[thread.length - 1] === msg) {
-          this.chatHistory[peer] = thread.slice(0, -1);
-        }
-        if (err.status === 401 || err.status === 422) {
-          this.router.navigate(['/signin']);
-        }
-      },
-    });
-
-    this.newMessage = '';
+    this.http
+      .post(url, {}, { headers })
+      .pipe(finalize(() => (this.isSendingMessage = false)))
+      .subscribe({
+        next: () => {
+          if (!this.chatUsers.includes(peer)) {
+            this.chatUsers = [...this.chatUsers, peer];
+          }
+        },
+        error: (err) => {
+          const thread = this.chatHistory[peer];
+          if (thread?.length && thread[thread.length - 1] === msg) {
+            this.chatHistory = {
+              ...this.chatHistory,
+              [peer]: thread.slice(0, -1),
+            };
+          }
+          if (err.status === 401 || err.status === 422) {
+            this.router.navigate(['/signin']);
+          }
+        },
+      });
   }
 }

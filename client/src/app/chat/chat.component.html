@@ -58,8 +58,11 @@
                 <h2 class="chat-header__title">{{ selectedUser }}</h2>
                 <span *ngIf="isUserOnline(selectedUser)" class="chat-header__presence">Online</span>
             </div>
-            <div class="chat-container">
-                <div class="message-thread">
+            <div class="chat-container" #messageScrollHost>
+                <div *ngIf="!(chatHistory[selectedUser]?.length)" class="message-thread-empty">
+                    Start the conversation.
+                </div>
+                <div class="message-thread" *ngIf="chatHistory[selectedUser]?.length">
                     <div
                         *ngFor="let message of chatHistory[selectedUser] || []"
                         class="message-row"
@@ -76,9 +79,22 @@
                 </div>
             </div>
             <div class="message-input">
-                <input matInput [(ngModel)]="newMessage" placeholder="Type a message" />
-                <button mat-raised-button color="primary" (click)="sendMessage()">
-                    Send
+                <textarea
+                    matInput
+                    class="message-input__field"
+                    [(ngModel)]="newMessage"
+                    placeholder="Type a message (Enter to send, Shift+Enter for new line)"
+                    rows="1"
+                    [disabled]="isSendingMessage"
+                    (keydown)="onComposerKeydown($event)"
+                ></textarea>
+                <button
+                    mat-raised-button
+                    color="primary"
+                    type="button"
+                    [disabled]="isSendingMessage || !newMessage.trim()"
+                    (click)="sendMessage()">
+                    {{ isSendingMessage ? 'Sending…' : 'Send' }}
                 </button>
             </div>
         </ng-container>
