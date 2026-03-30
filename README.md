@@ -40,6 +40,10 @@ client/
 
 - See `docs/system-design.md` for a high-level architecture diagram and request flows.
 
+### Security
+
+- See `docs/security.md` for the current security posture and hardening checklists (dev, organization LAN, production).
+
 ### Home / LAN deployment
 
 - See `deployment/home-deployment.md` for running the app on your Wi‑Fi (firewall, URLs, and how to stop everything safely).
