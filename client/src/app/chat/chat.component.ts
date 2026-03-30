@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../auth.service';
+import { DirectoryUser, ProfileService } from '../profile.service';
 import { Router } from '@angular/router';
 import { io } from 'socket.io-client';
 import { finalize } from 'rxjs/operators';
@@ -28,31 +29,43 @@ export class ChatComponent implements OnDestroy {
   private messageScrollHost?: ElementRef<HTMLElement>;
 
   currentUser: any;
-  chatUsers: string[] = [];
+  /** Shown in toolbar; falls back to username. */
+  toolbarLabel = '';
+  chatUsers: DirectoryUser[] = [];
   chatHistory: { [username: string]: Message[] } = {};
   /** Everyone registered except you — used for New Chat search. */
-  directoryUsers: string[] = [];
+  directoryUsers: DirectoryUser[] = [];
   directoryLoaded = false;
   onlineUsers: any[] = [];
-  filteredUsers: string[] = [];
+  filteredUsers: DirectoryUser[] = [];
   socket: any;
   selectedUser: string = ''; // to store the user selected for direct messages
   searchInput = '';
   newMessage = '';
-  /** True while `post_messages` request is in flight (prevents double send). */
+  /** True while DM POST is in flight (prevents double send). */
   isSendingMessage = false;
 
   constructor(
     private http: HttpClient,
     private authService: AuthService,
+    private profileService: ProfileService,
     private router: Router,
     private zone: NgZone
   ) {
     const token = localStorage.getItem('access_token');
     this.currentUser = localStorage.getItem('username') || '';
+    this.toolbarLabel = this.currentUser;
     const headers = new HttpHeaders().set('Authorization', 'Bearer ' + token);
-    this.http.get<string[]>('/api/chats_history', { headers }).subscribe(
-      (data: string[]) => {
+    this.profileService.getMyProfile().subscribe({
+      next: (p) => {
+        this.toolbarLabel = p.display_name || this.currentUser;
+      },
+      error: () => {
+        /* keep username */
+      },
+    });
+    this.http.get<DirectoryUser[]>('/api/chats_history', { headers }).subscribe(
+      (data: DirectoryUser[]) => {
         this.chatUsers = data ?? [];
       },
       (error) => {
@@ -62,8 +75,8 @@ export class ChatComponent implements OnDestroy {
       }
     );
 
-    this.http.get<string[]>('/api/directory_users', { headers }).subscribe(
-      (data: string[]) => {
+    this.http.get<DirectoryUser[]>('/api/directory_users', { headers }).subscribe(
+      (data: DirectoryUser[]) => {
         this.directoryUsers = data ?? [];
         this.directoryLoaded = true;
         this.applyNewChatFilter();
@@ -151,10 +164,19 @@ export class ChatComponent implements OnDestroy {
     }
     const q = this.searchInput.trim().toLowerCase();
     this.filteredUsers = q
-      ? this.directoryUsers.filter((name) =>
-          name.toLowerCase().includes(q)
+      ? this.directoryUsers.filter(
+          (e) =>
+            e.username.toLowerCase().includes(q) ||
+            e.display_name.toLowerCase().includes(q)
         )
       : [...this.directoryUsers];
+  }
+
+  headerTitleFor(username: string): string {
+    const e =
+      this.chatUsers.find((u) => u.username === username) ||
+      this.directoryUsers.find((u) => u.username === username);
+    return e?.display_name ?? username;
   }
 
   isUserOnline(username: string): boolean {
@@ -185,7 +207,7 @@ export class ChatComponent implements OnDestroy {
     this.sendMessage();
   }
 
-  selectUser(username: any): void {
+  selectUser(username: string): void {
     this.selectedUser = username;
     this.searchInput = '';
     this.applyNewChatFilter();
@@ -194,10 +216,9 @@ export class ChatComponent implements OnDestroy {
       'Bearer ' + localStorage.getItem('access_token')
     );
     this.http
-      .get<Message[]>(
-        `/api/message_history/${username}/&/${this.currentUser}`,
-        { headers }
-      )
+      .get<Message[]>(`/api/dm/messages/${encodeURIComponent(username)}`, {
+        headers,
+      })
       .subscribe(
         (data) => {
           this.chatHistory = {
@@ -260,22 +281,36 @@ export class ChatComponent implements OnDestroy {
       'Authorization',
       'Bearer ' + localStorage.getItem('access_token')
     );
-    const url = `/api/post_messages/${encodeURIComponent(peer)}/&/${encodeURIComponent(this.currentUser)}/&/${encodeURIComponent(text)}`;
     this.http
-      .post(url, {}, { headers })
+      .post<{ message: string }>(
+        '/api/dm/messages',
+        { to_username: peer, body: text },
+        { headers }
+      )
       .pipe(finalize(() => (this.isSendingMessage = false)))
       .subscribe({
         next: () => {
-          if (!this.chatUsers.includes(peer)) {
-            this.chatUsers = [...this.chatUsers, peer];
+          if (!this.chatUsers.some((e) => e.username === peer)) {
+            const fromDir = this.directoryUsers.find((e) => e.username === peer);
+            const entry: DirectoryUser = fromDir ?? {
+              username: peer,
+              display_name: peer,
+            };
+            this.chatUsers = [...this.chatUsers, entry];
           }
         },
         error: (err) => {
           const thread = this.chatHistory[peer];
-          if (thread?.length && thread[thread.length - 1] === msg) {
+          const last = thread?.length ? thread[thread.length - 1] : null;
+          if (
+            last &&
+            last.from === msg.from &&
+            last.to === msg.to &&
+            last.message === msg.message
+          ) {
             this.chatHistory = {
               ...this.chatHistory,
-              [peer]: thread.slice(0, -1),
+              [peer]: thread!.slice(0, -1),
             };
           }
           if (err.status === 401 || err.status === 422) {

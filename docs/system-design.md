@@ -1,13 +1,13 @@
 # System design — Rojin (the org chat)
 
-High-level architecture for the **Angular + Flask + Socket.IO** stack: how pieces connect, how data moves, and where to look in the repo. For **security posture and hardening**, see [`security.md`](./security.md). For **LAN / Wi‑Fi deployment**, see [`../deployment/home-deployment.md`](../deployment/home-deployment.md).
+High-level architecture for the **Angular + Flask + Socket.IO** stack: how pieces connect, how data moves, and where to look in the repo. For **terms** (JWT, CORS, SPA, …), see [`glossary.md`](./glossary.md). For **security posture and hardening**, see [`security.md`](./security.md). For **LAN / Wi‑Fi deployment**, see [`../deployment/home-deployment.md`](../deployment/home-deployment.md).
 
 ---
 
 ## Overview
 
 - **Frontend**: Angular SPA (dev server **:4200**), Angular Material, `socket.io-client`. JWT and username live in **`localStorage`**. In development, **`proxy.conf.json`** forwards `/api` and `/socket.io` to the backend.
-- **Backend**: Single process runs **Flask** REST and **Flask-SocketIO** on **:3000** (see `backend/main.py`). **SQLite** (`chat.db`, created next to the working directory when the backend runs from `backend/`) stores users and messages. **Presence** is an in-memory list **`online_users`**: `(username, socket_session_id_or_empty)`.
+- **Backend**: Single process runs **Flask** REST and **Flask-SocketIO** on **:3000** (see `backend/main.py`). **SQLite** (`chat.db`, created next to the working directory when the backend runs from `backend/`) stores users, **conversations** (direct DMs today), and **messages** scoped to `conversation_id`. **Presence** is an in-memory list **`online_users`**: `(username, socket_session_id_or_empty)`.
 - **Realtime DMs**: Each connected client **joins a Socket.IO room named after their username** (`join_user`). Sending a message **emits `receive_message` into the recipient’s room** so delivery does not depend on a fragile socket-id map in the UI.
 
 ---
@@ -77,8 +77,8 @@ sequenceDiagram
 
   Note over B,WS: User opens thread with peer P
 
-  B->>API: GET /api/message_history/P/&/me
-  API->>DB: load pairwise messages
+  B->>API: GET /api/dm/messages/P (JWT)
+  API->>DB: resolve direct Conversation; load Message rows
   API-->>B: message array
 
   Note over B,API: User sends text T to P
@@ -86,8 +86,8 @@ sequenceDiagram
   B->>WS: send_message { from, recipient: P, message: T }
   WS-->>B: receive_message to room P (peer's clients)
 
-  B->>API: POST /api/post_messages/P/&/me/&/T
-  API->>DB: INSERT Message
+  B->>API: POST /api/dm/messages JSON { to_username: P, body: T } (JWT)
+  API->>DB: get_or_create direct Conversation; INSERT Message
   API-->>B: 201
 ```
 
@@ -100,9 +100,12 @@ If the peer is **offline**, the Socket.IO emit reaches **no sockets** in room `P
 | Table | Purpose | Main columns |
 |-------|---------|----------------|
 | **User** | Accounts | `id`, `username` (unique), `password` (bcrypt hash) |
-| **Message** | DM history | `id`, `sender_id`, `recipient_id`, `message`, `timestamp` (ISO string) |
+| **UserProfile** | Optional profile | `user_id` PK/FK → `User`, `display_name`, `avatar_url`, `bio`, `updated_at` |
+| **Conversation** | Thread (DM or future group) | `id`, `type` (`direct` \| `group`), `title`, `created_at`, `dm_user_low_id` / `dm_user_high_id` for direct pair (normalized, unique) |
+| **ConversationMember** | Membership | `(conversation_id, user_id)` PK, `role`, `joined_at` |
+| **Message** | History | `id`, `conversation_id`, `sender_user_id`, `body`, `created_at`; optional `client_message_id` |
 
-Schema is created in `backend/chat/database.py`. Foreign keys reference `User.id`.
+Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message` table (if present) is **dropped on startup** so the file can move to the conversation model without manual SQL (dev-oriented).
 
 ---
 
@@ -113,12 +116,14 @@ Schema is created in `backend/chat/database.py`. Foreign keys reference `User.id
 | POST | `/api/signup` | No | Register user |
 | POST | `/api/signin` | No | Login; returns `access_token`; server adds user to `online_users` with empty sid until socket `join_user` |
 | POST | `/api/signout` | Yes | Logout; remove user from `online_users` |
-| GET | `/api/chats_history` | Yes | Usernames you have thread history with (includes self) |
-| GET | `/api/directory_users` | Yes | All registered usernames except you (New Chat search) |
-| GET | `/api/message_history/<u1>/&/<u2>` | No* | Pairwise message list |
-| POST | `/api/post_messages/<recipient>/&/<sender>/&/<message>` | No* | Persist one message (body still URL-encoded today) |
+| GET | `/api/chats_history` | Yes | Sidebar entries `{ username, display_name }` (you + direct-conversation peers) |
+| GET | `/api/directory_users` | Yes | All registered users except you (New Chat search) |
+| GET | `/api/dm/messages/<other_username>` | Yes | DM transcript with that user |
+| POST | `/api/dm/messages` | Yes | JSON `{ to_username, body }`; sender from JWT |
+| GET/PATCH | `/api/me/profile` | Yes | Current user profile |
+| GET | `/api/users/<username>/profile` | Yes | Another user’s public profile card |
 
-\*See [`security.md`](./security.md): these routes should be JWT-bound and use JSON bodies in a hardened deployment.
+See [`security.md`](./security.md) for remaining gaps (e.g. Socket.IO identity).
 
 ---
 
@@ -154,11 +159,11 @@ Legacy: server still accepts `recipientsid` instead of `recipient` for older cli
 - On each **`online_users`** broadcast, UI updates online badges / send eligibility hints.
 
 ### User opens a conversation with peer `P`
-- `GET /api/message_history/P/&/<currentUser>` loads history into the thread.
+- `GET /api/dm/messages/P` (JWT) loads history into the thread (empty array until the first message creates the direct **Conversation**).
 
 ### User sends a message to `P`
 1. **Socket**: `send_message` with `recipient: P` → server emits **`receive_message`** to room **`P`** (all tabs/sessions that joined as `P`).
-2. **HTTP**: `POST /api/post_messages/...` persists to **Message** (survives refresh; offline peer sees it later).
+2. **HTTP**: `POST /api/dm/messages` with JSON body persists a row in **Message** linked to the direct **Conversation** (survives refresh; offline peer sees it later).
 
 ### User logs out
 - `POST /api/signout` (JWT); localStorage cleared; navigate to sign-in; component **`ngOnDestroy`** disconnects the socket → **`disconnect`** handler updates presence.
@@ -202,6 +207,8 @@ Legacy: server still accepts `recipientsid` instead of `recipient` for older cli
 
 ## Related documentation
 
+- [`evolution.md`](./evolution.md) — planned direction for profiles, group chat, and a conversation-centric data model.
 - [`security.md`](./security.md) — risks, JWT/message API gaps, production & LAN checklists.
+- [`glossary.md`](./glossary.md) — definitions of common terms.
 - [`README.md`](../README.md) — setup, API list, features.
 - [`../deployment/home-deployment.md`](../deployment/home-deployment.md) — firewall, ports, stopping processes.

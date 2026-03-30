@@ -49,8 +49,16 @@
   max-width: 40vw;
 }
 
+.profile-link {
+  margin-left: 8px;
+  font-family: "Montserrat", sans-serif !important;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+}
+
 .logout-button {
-  margin-left: 4px;
+  margin-left: 8px;
   font-family: "Montserrat", sans-serif !important;
   flex-shrink: 0;
 }
@@ -310,6 +318,13 @@ width: 100%;
 .search-result-name {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.search-result-username {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #666;
+  flex-shrink: 0;
 }
 
 .search-result-online {

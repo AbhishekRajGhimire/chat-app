@@ -24,17 +24,16 @@ Controls that are “enough” on localhost are often **not** enough on the inte
 
 - **Password storage**: Passwords are hashed with **bcrypt** before insert (`backend/chat/user.py`). Plain-text passwords are not stored in SQLite.
 - **SQL injection (parameterized queries)**: User and message routes use **`?` placeholders** with SQLite; this is the right pattern for those queries.
-- **JWT on some HTTP routes**: `GET /api/chats_history`, `GET /api/directory_users`, and `POST /api/signout` use **`@jwt_required()`** (`backend/chat/chatfunc.py`, `user.py`).
+- **JWT on user-scoped HTTP routes**: `GET/POST` DM APIs, `GET /api/chats_history`, `GET /api/directory_users`, profile routes, and `POST /api/signout` use **`@jwt_required()`** where applicable (`backend/chat/chatfunc.py`, `profile.py`, `user.py`).
 - **Sign-in**: Issues a JWT on successful password check; client sends `Authorization: Bearer …` on protected calls.
 
 ### Gaps you should know about
 
-1. **Message API not tied to JWT**  
-   - `POST /api/post_messages/<recipient>/&/<sender>/&/<message>` and `GET /api/message_history/<user1>/&/<user2>` are **not** protected by `@jwt_required()`.  
-   - **Sender is taken from the URL**, not from the token. Anyone who can reach the server could try to post or fetch history **as arbitrary usernames** unless something else blocks them (e.g. firewall only).
+1. **Socket identity**  
+   - **`join_user`** trusts the **client-supplied username** to join a Socket.IO room. There is **no cryptographic proof** on the socket that the client is that user. On a hostile network, **impersonation** is possible. (HTTP DM APIs use JWT; realtime delivery does not yet.)
 
-2. **Message body in the URL**  
-   - Long messages, special characters, and **sensitive content** can hit URL limits, encoding issues, and may appear in **proxy or server logs**.
+2. **`send_message` over Socket.IO**  
+   - Server should treat **`from`** as untrusted unless verified against a JWT (or drop `from` and use server-side identity only).
 
 3. **JWT and Flask secrets in code**  
    - `SECRET_KEY`, `JWT_SECRET_KEY` are fixed **development** strings in `backend/chat/__init__.py`.  
@@ -43,19 +42,13 @@ Controls that are “enough” on localhost are often **not** enough on the inte
 4. **CORS / Socket.IO**  
    - CORS is broad; Socket.IO uses **`cors_allowed_origins='*'`** in `__init__.py`. Fine for quick local dev; **too open** for production unless you lock origins deliberately.
 
-5. **Socket identity**  
-   - **`join_user`** trusts the **client-supplied username** to join a Socket.IO room. There is **no cryptographic proof** on the socket that the client is that user. On a hostile network, **impersonation** is possible.
-
-6. **`send_message` over Socket.IO**  
-   - Server should treat **`from`** as untrusted unless verified against a JWT (or drop `from` and use server-side identity only).
-
-7. **Flask `debug=True`**  
+5. **Flask `debug=True`**  
    - `backend/main.py` runs with **`debug=True`**, which is **unsafe** on any shared or public network (interactive debugger exposure).
 
-8. **Rate limiting & lockout**  
+6. **Rate limiting & lockout**  
    - No built-in limits on sign-in, sign-up, or messaging → **brute-force** and **spam** are easier on an exposed deployment.
 
-9. **Signup error shape**  
+7. **Signup error shape**  
    - Duplicate username may return **non-JSON** responses in some paths; minor for security, relevant for robust clients.
 
 ---
@@ -67,8 +60,7 @@ Use this as a target architecture, not a single-day task.
 ### Authentication & authorization
 
 - [ ] Require **`@jwt_required()`** on **all** endpoints that read or write user-specific data.
-- [ ] **Never trust `sender` from the client** for `post_messages`. Set sender from **`get_jwt_identity()`** (or equivalent).
-- [ ] Replace URL-encoded messages with **`POST /api/messages`** (JSON body: recipient + text), with a **max body size** and validation.
+- [x] **DM HTTP API**: sender from **`get_jwt_identity()`**; JSON body on **`POST /api/dm/messages`** (still add **max body size** / validation in production).
 - [ ] Enable **JWT expiry** (`JWT_ACCESS_TOKEN_EXPIRES`) and implement **refresh tokens** or re-login UX if sessions should be long-lived.
 - [ ] Load **`SECRET_KEY`**, **`JWT_SECRET_KEY`**, and DB URLs from **environment variables** (never commit real secrets).
 
@@ -131,12 +123,22 @@ You may accept slightly more risk than production, but **insider threat** and **
 |------|----------|
 | Flask + JWT + CORS + Socket.IO defaults | `backend/chat/__init__.py` |
 | Sign up / sign in / sign out | `backend/chat/user.py` |
-| Messages, history, directory, socket handlers | `backend/chat/chatfunc.py` |
+| DMs, history, directory, socket handlers | `backend/chat/chatfunc.py` |
+| Direct conversation helpers | `backend/chat/conversations.py` |
+| Profiles | `backend/chat/profile.py` |
+| Schema / legacy reset | `backend/chat/database.py` |
 | Server entry (debug, host, port) | `backend/main.py` |
 | Client token usage | `client/src/app/chat/chat.component.ts`, `auth.service.ts` |
 
 ---
 
+## See also
+
+- [`evolution.md`](./evolution.md) — roadmap for profiles, groups, and scalable message modeling.
+- [`glossary.md`](./glossary.md) — short definitions of **JWT**, **CORS**, **Socket.IO**, and related terms.
+
+---
+
 ## Summary
 
-Today the app is appropriate for **learning and local demos** with **good password hashing** and **JWT on part of the API**, but **message HTTP routes and real-time identity** need hardening before you call it **secure for an organization or the internet**. Use the checklists above incrementally; the highest impact items are **JWT on all private APIs**, **sender derived only from the token**, **JSON bodies for messages**, **socket authentication**, **secrets from env**, **`debug=False`**, and **HTTPS + tight CORS** in production.
+Today the app is appropriate for **learning and local demos** with **good password hashing**, **JWT on DM and profile HTTP routes**, and **sender derived from the token for persisted messages**, but **real-time socket identity** and **deployment hygiene** still need hardening before you call it **secure for an organization or the internet**. Use the checklists above incrementally; the highest impact items are **socket authentication**, **secrets from env**, **`debug=False`**, **JWT expiry**, and **HTTPS + tight CORS** in production.

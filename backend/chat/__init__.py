@@ -21,4 +21,5 @@ jwt = JWTManager(app)
 
 from chat import user
 from chat import chatfunc
+from chat import profile
 from chat import database

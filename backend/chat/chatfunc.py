@@ -1,106 +1,199 @@
 import datetime
+
 from flask import jsonify, request
-from flask_jwt_extended import  jwt_required, get_jwt_identity
 from flask_cors import CORS
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_socketio import emit, join_room
-# Task 1: Import database connection instance here
+
+from .conversations import get_or_create_direct_conversation
 from .database import connection, cursor
 
-from chat import app ,socketio, online_users, jwt
+from chat import app, online_users, socketio
 
 cors = CORS(app)
 
-# Task 8: Add message routes here
-@app.route('/api/post_messages/<recipient>/&/<sender>/&/<message>', methods=['POST'])
-def postMessage(recipient,sender,message):
-    cursor.execute("SELECT * FROM User WHERE username=?", (sender,))
-    sender_user = cursor.fetchone()
-    cursor.execute("SELECT * FROM User WHERE username=?", (recipient,))
-    recipient_user = cursor.fetchone()
-    if not sender_user or not recipient_user:
-        return jsonify({'error': 'Unknown sender or recipient'}), 400
-    cursor.execute("INSERT INTO Message (sender_id, recipient_id, message, timestamp) VALUES (?,?,?,?)",
-                (sender_user[0], recipient_user[0], message, datetime.datetime.now().isoformat()))  # Assuming the first column is the ID
+
+def _utc_now_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def _direct_conversation_id_for_pair(user_id_a: int, user_id_b: int):
+    low, high = (user_id_a, user_id_b) if user_id_a < user_id_b else (user_id_b, user_id_a)
+    cursor.execute(
+        """
+        SELECT id FROM Conversation
+        WHERE type = 'direct' AND dm_user_low_id = ? AND dm_user_high_id = ?
+        """,
+        (low, high),
+    )
+    row = cursor.fetchone()
+    return int(row[0]) if row else None
+
+
+@app.route("/api/dm/messages", methods=["POST"])
+@jwt_required()
+def post_dm_message():
+    me_username = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON body"}), 400
+    to_username = data.get("to_username")
+    body = data.get("body")
+    if not isinstance(to_username, str) or not to_username.strip():
+        return jsonify({"error": "to_username required"}), 400
+    if not isinstance(body, str) or not body.strip():
+        return jsonify({"error": "body required"}), 400
+    to_username = to_username.strip()
+    body = body.strip()
+    if to_username == me_username:
+        return jsonify({"error": "Cannot message yourself"}), 400
+
+    cursor.execute("SELECT id FROM User WHERE username=?", (me_username,))
+    me_row = cursor.fetchone()
+    cursor.execute("SELECT id FROM User WHERE username=?", (to_username,))
+    peer_row = cursor.fetchone()
+    if not me_row or not peer_row:
+        return jsonify({"error": "Unknown user"}), 400
+
+    cid = get_or_create_direct_conversation(int(me_row[0]), int(peer_row[0]))
+    now = _utc_now_iso()
+    cursor.execute(
+        """
+        INSERT INTO Message (conversation_id, sender_user_id, body, created_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        (cid, me_row[0], body, now),
+    )
     connection.commit()
-    response = jsonify({'message': 'Message posted successfully'}), 201
-    return response
+    return (
+        jsonify(
+            {
+                "message": "Message posted successfully",
+                "conversation_id": cid,
+                "message_id": cursor.lastrowid,
+            }
+        ),
+        201,
+    )
 
-@app.route('/api/message_history/<user1>/&/<user2>', methods=['GET'])
-def get_message_history(user1, user2):
-    cursor.execute("SELECT * FROM User WHERE username=?", (user1,))
-    user1_row = cursor.fetchone()
-    cursor.execute("SELECT * FROM User WHERE username=?", (user2,))
-    user2_row = cursor.fetchone()
-    if not user1_row or not user2_row:
+
+@app.route("/api/dm/messages/<other_username>", methods=["GET"])
+@jwt_required()
+def get_dm_messages(other_username):
+    me_username = get_jwt_identity()
+    if other_username == me_username:
         return jsonify([]), 200
-    query = '''
-        SELECT User.username AS sender, recipient.username AS recipient, Message.message, Message.timestamp
-        FROM Message
-        JOIN User ON Message.sender_id = User.id
-        JOIN User AS recipient ON Message.recipient_id = recipient.id
-        WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
-    '''
-    cursor.execute(query, (user1_row[0], user2_row[0], user2_row[0], user1_row[0]))
-    messages = cursor.fetchall()
-    # Store the messages in the desired format
-    formatted_messages = []
-    for message in messages:
-        formatted_messages.append({
-            'from': message[0],  # sender's username
-            'to': message[1],    # recipient's username
-            'message': message[2],
-            'datetime':message[3]
-        })
 
-    return jsonify(formatted_messages)
+    cursor.execute("SELECT id FROM User WHERE username=?", (me_username,))
+    me_row = cursor.fetchone()
+    cursor.execute("SELECT id FROM User WHERE username=?", (other_username,))
+    other_row = cursor.fetchone()
+    if not me_row or not other_row:
+        return jsonify([]), 200
+
+    me_id = int(me_row[0])
+    other_id = int(other_row[0])
+    cid = _direct_conversation_id_for_pair(me_id, other_id)
+    if cid is None:
+        return jsonify([]), 200
+
+    cursor.execute(
+        """
+        SELECT u.username, m.sender_user_id, m.body, m.created_at
+        FROM Message m
+        JOIN User u ON u.id = m.sender_user_id
+        WHERE m.conversation_id = ?
+        ORDER BY m.created_at
+        """,
+        (cid,),
+    )
+    rows = cursor.fetchall()
+    formatted = []
+    for sender_name, sender_id, text, ts in rows:
+        to_name = other_username if int(sender_id) == me_id else me_username
+        formatted.append(
+            {
+                "from": sender_name,
+                "to": to_name,
+                "message": text,
+                "datetime": ts,
+            }
+        )
+    return jsonify(formatted)
 
 
-@app.route('/api/chats_history', methods=['GET'])
+@app.route("/api/chats_history", methods=["GET"])
 @jwt_required()
 def get_chats_history():
-    cursor.execute("SELECT * FROM User WHERE username=?", (get_jwt_identity(),))
-    user = cursor.fetchone()
-    if not user:
+    cursor.execute("SELECT id, username FROM User WHERE username=?", (get_jwt_identity(),))
+    me_row = cursor.fetchone()
+    if not me_row:
         return jsonify([]), 200
-    query = '''
-        SELECT DISTINCT User.username
-        FROM User
-        WHERE id == ? OR (
-            id IN (SELECT sender_id FROM Message WHERE sender_id = ? OR recipient_id = ?)
-            OR
-            id IN (SELECT recipient_id FROM Message WHERE sender_id = ? OR recipient_id = ?)
-        )
-    '''
-    cursor.execute(query, (user[0], user[0], user[0], user[0], user[0]))
-    result = cursor.fetchall()
-    connection.commit()
-    users_with_chat = [row[0] for row in result]
-    return jsonify(users_with_chat)
+    me_id, me_name = int(me_row[0]), me_row[1]
+
+    cursor.execute(
+        """
+        SELECT COALESCE(NULLIF(TRIM(p.display_name), ''), u.username)
+        FROM User u
+        LEFT JOIN UserProfile p ON p.user_id = u.id
+        WHERE u.id = ?
+        """,
+        (me_id,),
+    )
+    self_display_row = cursor.fetchone()
+    self_display = self_display_row[0] if self_display_row else me_name
+
+    cursor.execute(
+        """
+        SELECT DISTINCT u.username,
+            COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name
+        FROM Conversation c
+        JOIN ConversationMember ms ON ms.conversation_id = c.id AND ms.user_id = ?
+        JOIN ConversationMember mp ON mp.conversation_id = c.id AND mp.user_id != ms.user_id
+        JOIN User u ON u.id = mp.user_id
+        LEFT JOIN UserProfile p ON p.user_id = u.id
+        WHERE c.type = 'direct'
+        """,
+        (me_id,),
+    )
+    peers = [{"username": r[0], "display_name": r[1]} for r in cursor.fetchall()]
+    self_entry = {"username": me_name, "display_name": self_display}
+    combined = peers + [self_entry]
+    combined.sort(key=lambda e: e["display_name"].lower())
+    return jsonify(combined)
 
 
-@app.route('/api/directory_users', methods=['GET'])
+@app.route("/api/directory_users", methods=["GET"])
 @jwt_required()
 def directory_users():
     """All registered usernames except the current user (for New Chat search)."""
     me = get_jwt_identity()
     cursor.execute(
-        'SELECT username FROM User WHERE username != ? ORDER BY username COLLATE NOCASE',
+        """
+        SELECT u.username,
+            COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name
+        FROM User u
+        LEFT JOIN UserProfile p ON p.user_id = u.id
+        WHERE u.username != ?
+        ORDER BY display_name COLLATE NOCASE
+        """,
         (me,),
     )
     rows = cursor.fetchall()
-    return jsonify([row[0] for row in rows])
+    return jsonify(
+        [{"username": row[0], "display_name": row[1]} for row in rows]
+    )
 
 
-# Task 9: Handle Socket.IO connection and sent messages here
-@socketio.on('connect')
+@socketio.on("connect")
 def on_connect():
-    print('socket connect', request.sid)
+    print("socket connect", request.sid)
 
 
-@socketio.on('join_user')
+@socketio.on("join_user")
 def on_join_user(data):
     """Client sends logged-in username; join a room named after them for reliable DM delivery."""
-    username = (data or {}).get('username')
+    username = (data or {}).get("username")
     if not username or not isinstance(username, str):
         return
     username = username.strip()
@@ -115,46 +208,45 @@ def on_join_user(data):
             break
     if not updated:
         online_users.append((username, request.sid))
-    print('join_user', username, request.sid, online_users)
-    emit('online_users', online_users, broadcast=True)
+    print("join_user", username, request.sid, online_users)
+    emit("online_users", online_users, broadcast=True)
 
 
-@socketio.on('disconnect')
+@socketio.on("disconnect")
 def on_disconnect():
     sid = request.sid
     for index, user_tuple in enumerate(online_users):
         if user_tuple[1] == sid:
-            online_users[index] = (user_tuple[0], '')
+            online_users[index] = (user_tuple[0], "")
             break
-    emit('online_users', online_users, broadcast=True)
+    emit("online_users", online_users, broadcast=True)
 
 
-@socketio.on('send_message')
+@socketio.on("send_message")
 def handle_message(data):
     data = data or {}
-    sender = data.get('from')
-    message = data.get('message')
+    sender = data.get("from")
+    message = data.get("message")
     if not isinstance(sender, str) or not sender.strip():
         return
     sender = sender.strip()
     if message is None or not isinstance(message, str):
         return
-    recipient = data.get('recipient')
+    recipient = data.get("recipient")
     if isinstance(recipient, str):
         recipient = recipient.strip() or None
     else:
         recipient = None
-    if not recipient and not data.get('recipientsid'):
+    if not recipient and not data.get("recipientsid"):
         return
     payload = {
-        'username': sender,
-        'message': message,
-        'datetime': datetime.datetime.now().isoformat(),
+        "username": sender,
+        "message": message,
+        "datetime": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     if recipient:
-        emit('receive_message', payload, room=recipient)
+        emit("receive_message", payload, room=recipient)
     else:
-        recipientsid = data.get('recipientsid')
+        recipientsid = data.get("recipientsid")
         if recipientsid:
-            emit('receive_message', payload, room=recipientsid)
-
+            emit("receive_message", payload, room=recipientsid)

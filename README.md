@@ -7,7 +7,7 @@ A full‑stack real‑time chat application built with **Angular** on the fronte
 - **Auth**: Sign up / sign in with JWT
 - **Realtime messaging**: Socket.IO events for instant delivery
 - **Presence**: Online users list
-- **Message history**: Persisted to SQLite and retrievable per user pair
+- **Message history**: Persisted to SQLite under **direct conversations** (conversation-centric schema; see `docs/evolution.md`)
 - **Simple UI**: Angular Material components for a clean chat experience
 
 ### Tech stack
@@ -24,8 +24,10 @@ backend/
   chat/
     __init__.py          # Flask app + SocketIO + JWT setup
     user.py              # auth routes: signup/signin/signout
-    chatfunc.py          # chat routes + socket events
-    database.py          # SQLite connection + schema
+    chatfunc.py          # DM REST + directory + socket events
+    conversations.py     # get-or-create direct Conversation by user pair
+    profile.py           # JWT profile APIs
+    database.py          # SQLite connection + schema (drops legacy pairwise Message if seen)
 client/
   src/
     app/
@@ -40,9 +42,17 @@ client/
 
 - See `docs/system-design.md` for a high-level architecture diagram and request flows.
 
+### Evolution (future features)
+
+- See `docs/evolution.md` for a roadmap toward profiles, group chat, and a conversation-centric data model.
+
 ### Security
 
 - See `docs/security.md` for the current security posture and hardening checklists (dev, organization LAN, production).
+
+### Glossary
+
+- See `docs/glossary.md` for short definitions of terms (JWT, CORS, Socket.IO, SPA, etc.).
 
 ### Home / LAN deployment
 
@@ -90,8 +100,10 @@ Frontend runs on **`http://localhost:4200`** and proxies:
 - `POST /api/signout` (JWT required)
 - `GET /api/chats_history` (JWT required)
 - `GET /api/directory_users` (JWT required) — all registered usernames except you (for New Chat search)
-- `GET /api/message_history/<user1>/&/<user2>`
-- `POST /api/post_messages/<recipient>/&/<sender>/&/<message>`
+- `GET /api/dm/messages/<other_username>` (JWT required) — DM thread with that user
+- `POST /api/dm/messages` (JWT required) — JSON `{ "to_username", "body" }`
+- `GET /api/me/profile`, `PATCH /api/me/profile` (JWT required)
+- `GET /api/users/<username>/profile` (JWT required) — public profile card
 
 ### Screenshots
 

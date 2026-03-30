@@ -5,7 +5,8 @@
       </span>
     </div>
     <span class="app-toolbar__spacer"></span>
-    <span class="app-toolbar__user">Welcome, {{ currentUser }}</span>
+    <span class="app-toolbar__user">Welcome, {{ toolbarLabel }}</span>
+    <a mat-stroked-button color="accent" class="profile-link" routerLink="/profile">Profile</a>
     <button mat-raised-button color="warn" class="logout-button" (click)="logout()">
         Logout
     </button>
@@ -18,10 +19,10 @@
         </button>
         <h4 style="margin: 10px">Direct Messages</h4>
         <mat-list class="chat-users-list">
-            <mat-list-item *ngFor="let user of chatUsers" (click)="selectUser(user)"
-                [ngClass]="{ active: selectedUser === user }">
-                <span *ngIf="user === currentUser">{{user}} (You)</span>
-                <span *ngIf="user != currentUser">{{ user }}</span>
+            <mat-list-item *ngFor="let entry of chatUsers" (click)="selectUser(entry.username)"
+                [ngClass]="{ active: selectedUser === entry.username }">
+                <span *ngIf="entry.username === currentUser">{{ entry.display_name }} (You)</span>
+                <span *ngIf="entry.username !== currentUser">{{ entry.display_name }}</span>
             </mat-list-item>
         </mat-list>
     </div>
@@ -43,9 +44,10 @@
                     <div *ngIf="directoryLoaded && directoryUsers.length > 0 && filteredUsers.length === 0 && searchInput.trim()" class="search-results__hint">
                         No user matches your search.
                     </div>
-                    <mat-list-item *ngFor="let user of filteredUsers" (click)="selectUser(user)">
-                        <span class="search-result-name">{{ user }}</span>
-                        <span *ngIf="isUserOnline(user)" class="search-result-online">Online</span>
+                    <mat-list-item *ngFor="let entry of filteredUsers" (click)="selectUser(entry.username)">
+                        <span class="search-result-name">{{ entry.display_name }}</span>
+                        <span class="search-result-username" *ngIf="entry.display_name !== entry.username">@{{ entry.username }}</span>
+                        <span *ngIf="isUserOnline(entry.username)" class="search-result-online">Online</span>
                     </mat-list-item>
                 </mat-list>
             </div>
@@ -55,7 +57,7 @@
                 <button type="button" mat-icon-button class="chat-back" (click)="backToInbox()" aria-label="Back to inbox">
                     <mat-icon>arrow_back</mat-icon>
                 </button>
-                <h2 class="chat-header__title">{{ selectedUser }}</h2>
+                <h2 class="chat-header__title">{{ headerTitleFor(selectedUser) }}</h2>
                 <span *ngIf="isUserOnline(selectedUser)" class="chat-header__presence">Online</span>
             </div>
             <div class="chat-container" #messageScrollHost>

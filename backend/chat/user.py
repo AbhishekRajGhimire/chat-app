@@ -26,8 +26,18 @@ def signup():
     if result:
         return 'Username already exists', 409
 
-    cursor.execute("INSERT INTO User (username,password) VALUES (?, ?)",
-                (username, hashed_password))  # Assuming the first column is the ID
+    cursor.execute(
+        "INSERT INTO User (username,password) VALUES (?, ?)",
+        (username, hashed_password),
+    )
+    new_id = cursor.lastrowid
+    cursor.execute(
+        """
+        INSERT INTO UserProfile (user_id, display_name, updated_at)
+        VALUES (?, ?, datetime('now'))
+        """,
+        (new_id, username),
+    )
     connection.commit()
     response = jsonify({'message': 'User created successfully'}), 201
     return response
