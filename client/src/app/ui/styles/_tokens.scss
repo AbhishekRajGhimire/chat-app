@@ -1,0 +1,42 @@
+// ---------------------------------------------------------------------------
+// Rojin shared design tokens — import from feature SCSS via:
+//   @import '../ui/styles/tokens';
+// or add "stylePreprocessorOptions.includePaths" and @import 'tokens';
+// ---------------------------------------------------------------------------
+
+// Brand
+$rojin-primary-dark: #2b0a2c;
+$rojin-primary: #4a154b;
+$rojin-text-on-brand: #fff;
+$rojin-accent-outline: rgba(255, 255, 255, 0.55);
+
+// Surfaces
+$rojin-bg-thread: #f5f5f7;
+$rojin-bg-elevated: #fff;
+$rojin-border: #ccc;
+$rojin-text-body: #2b0a2c;
+$rojin-text-muted: #666;
+$rojin-text-meta: #888;
+$rojin-online: #2e7d32;
+
+// Layout
+$rojin-breakpoint-mobile: 768px;
+$rojin-toolbar-height: 50px;
+$rojin-sidebar-width: 200px;
+$rojin-font-brand: "Montserrat", sans-serif;
+$rojin-tap-min: 48px;
+
+/// Stack below a single Material toolbar row (mobile browser chrome aware).
+@mixin rojin-main-below-toolbar {
+  height: calc(100vh - #{$rojin-toolbar-height});
+  height: calc(100dvh - #{$rojin-toolbar-height});
+  min-height: 0;
+  max-height: calc(100vh - #{$rojin-toolbar-height});
+  max-height: calc(100dvh - #{$rojin-toolbar-height});
+}
+
+/// Full viewport fill for root / host (fallback then dynamic vh).
+@mixin rojin-viewport-min-height {
+  min-height: 100vh;
+  min-height: 100dvh;
+}

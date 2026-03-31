@@ -1,0 +1,42 @@
+@import '../styles/tokens';
+
+:host {
+  display: block;
+  /* Safe area: status bar / notch */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.toolbar-shell__bar {
+  background-color: $rojin-primary-dark !important;
+  color: $rojin-text-on-brand !important;
+  font-family: $rojin-font-brand !important;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: $rojin-toolbar-height;
+  height: auto;
+  box-sizing: border-box;
+}
+
+.toolbar-shell__brand {
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-shell__spacer {
+  flex: 1 1 auto;
+}
+
+.toolbar-shell__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: $rojin-tap-min;
+}
+
+::ng-deep .mat-toolbar-row,
+::ng-deep .mat-toolbar-single-row {
+  height: auto !important;
+  min-height: $rojin-toolbar-height;
+}

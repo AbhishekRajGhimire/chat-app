@@ -6,7 +6,7 @@ High-level architecture for the **Angular + Flask + Socket.IO** stack: how piece
 
 ## Overview
 
-- **Frontend**: Angular SPA (dev server **:4200**), Angular Material, `socket.io-client`. JWT and username live in **`localStorage`**. In development, **`proxy.conf.json`** forwards `/api` and `/socket.io` to the backend.
+- **Frontend**: Angular SPA (dev server **:4200**), Angular Material, `socket.io-client`. A small shared **`ui/`** layer holds **design tokens** (SCSS variables and layout mixins) and **dumb presentational components** (toolbar shell, brand lockup) so feature screens stay thin and styling stays consistent. The shell and root layout use **`dvh`** and **`env(safe-area-inset-*)`** where relevant for mobile notches and browser chrome. JWT and username live in **`localStorage`**. In development, **`proxy.conf.json`** forwards `/api` and `/socket.io` to the backend.
 - **Backend**: Single process runs **Flask** REST and **Flask-SocketIO** on **:3000** (see `backend/main.py`). **SQLite** (`chat.db`, created next to the working directory when the backend runs from `backend/`) stores users, **conversations** (direct DMs today), and **messages** scoped to `conversation_id`. **Presence** is an in-memory list **`online_users`**: `(username, socket_session_id_or_empty)`.
 - **Realtime DMs**: On **authenticated Socket.IO connect** (JWT in the handshake), the server **joins a room named after the JWT username** and tracks **`sid → username`**. Sending a message **emits `receive_message` into the recipient’s room**; the sender is taken only from the socket session, not from the client payload.
 
@@ -20,10 +20,13 @@ flowchart TB
 
   subgraph FE[Frontend]
     A
+    UI["ui: tokens toolbar brand"]
     LS["localStorage JWT and username"]
     PX["Dev proxy proxy.conf.json"]
     RT["Routes root signin signup profile"]
   end
+
+  A --> UI
 
   subgraph BE [Backend port 3000]
     API["Flask REST /api"]
@@ -175,10 +178,18 @@ Legacy: server still accepts `recipientsid` instead of `recipient` for older cli
 |------|----------|
 | Routes (`''` → chat, `/signin`, `/signup`) | `client/src/app/app-routing.module.ts` |
 | Chat UI, REST, Socket.IO, composer | `client/src/app/chat/chat.component.ts` + `.html` + `.scss` |
+| Shared UI module (declares/exports shell + lockup) | `client/src/app/ui/ui.module.ts` |
+| Design tokens (colors, breakpoints, toolbar/sidebar sizes, viewport mixins) | `client/src/app/ui/styles/_tokens.scss` (imported from feature SCSS and `client/src/styles.scss`) |
+| Toolbar chrome + safe-area top padding | `client/src/app/ui/toolbar-shell/` |
+| Brand title + optional tagline | `client/src/app/ui/brand-lockup/` |
 | Sign-in / sign-up forms | `client/src/app/signin/`, `client/src/app/signup/` |
 | Auth REST helpers | `client/src/app/auth.service.ts` |
 | Dev proxy | `client/src/proxy.conf.json` |
 | Material + **`BrowserAnimationsModule`** | `client/src/app/app.module.ts` |
+
+### Shared `ui/` layer (tokens + shell)
+
+The chat screen composes **`ToolbarShellComponent`** with projected regions: brand slot (**`BrandLockupComponent`**, tagline hidden on narrow widths) and actions (welcome text, profile, logout). That keeps **feature logic** in `ChatComponent` while **chrome and spacing** live in reusable pieces. Global **`html` / `body`** min-height and the chat host use **`100vh` / `100dvh`** and **`-webkit-fill-available`** where needed; **`index.html`** uses **`viewport-fit=cover`** so **`env(safe-area-inset-*)`** applies on supported devices. New screens can import the same tokens and optionally reuse **`UiModule`** exports without duplicating hex values or toolbar markup.
 
 ---
 

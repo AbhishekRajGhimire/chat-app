@@ -50,6 +50,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   composerPlaceholder = 'Type a message (Enter to send, Shift+Enter for new line)';
   searchPlaceholder = 'Search registered users (online or offline)';
 
+  /** Matches mobile breakpoint; hides brand tagline in toolbar when true. */
+  compactToolbar = false;
+
   private mediaQuery?: MediaQueryList;
   private readonly mqHandler = () =>
     this.zone.run(() => this.applyViewportPlaceholders());
@@ -160,6 +163,7 @@ export class ChatComponent implements OnInit, OnDestroy {
       return;
     }
     const compact = window.matchMedia('(max-width: 768px)').matches;
+    this.compactToolbar = compact;
     this.composerPlaceholder = compact
       ? 'Message'
       : 'Type a message (Enter to send, Shift+Enter for new line)';

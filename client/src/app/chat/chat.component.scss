@@ -1,71 +1,38 @@
+@import '../ui/styles/tokens';
+
 :host {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
   box-sizing: border-box;
+  @include rojin-viewport-min-height;
+  min-height: -webkit-fill-available;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.app-toolbar {
-  background-color: #2b0a2c !important;
-  font-family: "Montserrat", sans-serif !important;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.app-toolbar__brand {
-  display: flex;
-  align-items: center;
-  line-height: 1.2;
-}
-
-.app-toolbar__lockup {
-  font-family: "Montserrat", sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.app-toolbar__name {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.app-toolbar__rest {
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-.app-toolbar__spacer {
-  flex: 1 1 auto;
-}
-
-.app-toolbar__user {
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 40vw;
-}
-
-.profile-link {
-  margin-left: 8px;
-  font-family: "Montserrat", sans-serif !important;
+.chat-toolbar {
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(255, 255, 255, 0.55) !important;
-}
 
-.logout-button {
-  margin-left: 8px;
-  font-family: "Montserrat", sans-serif !important;
-  flex-shrink: 0;
-}
+  .chat-toolbar__user {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40vw;
+    color: $rojin-text-on-brand;
+  }
 
-.mat-toolbar-row,
-.mat-toolbar-single-row {
-  height: 50px !important;
+  .chat-toolbar__profile {
+    font-family: $rojin-font-brand !important;
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.95) !important;
+    border-color: $rojin-accent-outline !important;
+  }
+
+  .chat-toolbar__logout {
+    font-family: $rojin-font-brand !important;
+    flex-shrink: 0;
+  }
 }
 
 .chats-section {
@@ -85,12 +52,14 @@
 //   padding: 10px;
 // }
 .chats-sidebar {
-  background-color: #4a154b;
-  color: white;
-  width: 200px;
-  height: 100vh;
-  font-family: "Montserrat", sans-serif;
+  background-color: $rojin-primary;
+  color: $rojin-text-on-brand;
+  width: $rojin-sidebar-width;
+  align-self: stretch;
+  min-height: 0;
+  font-family: $rojin-font-brand;
   padding: 10px;
+  box-sizing: border-box;
   .active {
     background-color: rgba(128, 128, 128, 0.438);
   }
@@ -110,10 +79,10 @@ width: 100%;
 .chat-and-search-panel {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 50px);
-  overflow: hidden;
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -122,15 +91,15 @@ width: 100%;
   gap: 4px;
   flex-shrink: 0;
   padding: 8px 8px 8px 4px;
-  border-bottom: 1px solid #ccc;
-  background: #fff;
+  border-bottom: 1px solid $rojin-border;
+  background: $rojin-bg-elevated;
 
   &__title {
     margin: 0;
     font-size: 1.15rem;
     font-weight: 600;
-    font-family: "Montserrat", sans-serif;
-    color: #2b0a2c;
+    font-family: $rojin-font-brand;
+    color: $rojin-text-body;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -142,7 +111,7 @@ width: 100%;
     flex-shrink: 0;
     font-size: 12px;
     font-weight: 600;
-    color: #2e7d32;
+    color: $rojin-online;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -151,7 +120,7 @@ width: 100%;
 .chat-back {
   display: none;
   flex-shrink: 0;
-  color: #2b0a2c;
+  color: $rojin-text-body;
 }
 
 // font-family: 'Victor Mono', monospace;
@@ -274,7 +243,7 @@ width: 100%;
 
 .search-bar {
   background-color: #f5f5f5;
-  border: 1px solid #ccc;
+  border: 1px solid $rojin-border;
   padding: 8px;
   border-radius: 4px;
 }
@@ -290,8 +259,8 @@ width: 100%;
   top: 100%;
   left: 0;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: $rojin-bg-elevated;
+  border: 1px solid $rojin-border;
   border-top: none;
   border-radius: 0 0 4px 4px;
   max-height: 200px;
@@ -311,7 +280,7 @@ width: 100%;
   &__hint {
     margin: 10px;
     font-size: 14px;
-    color: #666;
+    color: $rojin-text-muted;
   }
 }
 
@@ -323,7 +292,7 @@ width: 100%;
 .search-result-username {
   margin-left: 8px;
   font-size: 12px;
-  color: #666;
+  color: $rojin-text-muted;
   flex-shrink: 0;
 }
 
@@ -341,7 +310,7 @@ width: 100%;
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background-color: #f5f5f7;
+  background-color: $rojin-bg-thread;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -353,9 +322,9 @@ width: 100%;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-family: "Montserrat", sans-serif;
+  font-family: $rojin-font-brand;
   font-size: 15px;
-  color: #888;
+  color: $rojin-text-meta;
   padding: 24px 16px;
   user-select: none;
 }
@@ -398,14 +367,14 @@ width: 100%;
 
   &__meta {
     font-size: 11px;
-    color: #888;
+    color: $rojin-text-meta;
     margin-top: 8px;
     line-height: 1.2;
   }
 
   &--received {
-    background: #fff;
-    color: #2b0a2c;
+    background: $rojin-bg-elevated;
+    color: $rojin-text-body;
     border: 1px solid rgba(74, 21, 75, 0.35);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 
@@ -415,9 +384,9 @@ width: 100%;
   }
 
   &--sent {
-    background-color: #4a154b;
-    color: #fff;
-    border: 1px solid #4a154b;
+    background-color: $rojin-primary;
+    color: $rojin-text-on-brand;
+    border: 1px solid $rojin-primary;
     box-shadow: 0 1px 2px rgba(43, 10, 44, 0.2);
 
     .message-bubble__meta {
@@ -435,7 +404,7 @@ width: 100%;
 margin-bottom: 0px !important;
   border-radius: 10px;
   // margin-right: 8px;
-  border: 1px solid #4a154b;
+  border: 1px solid $rojin-primary;
 
 }
 
@@ -459,8 +428,8 @@ margin-bottom: 0px !important;
   padding: 8px 37px;
   border: none;
   border-radius: 4px;
-  background-color: #4a154b;
-  color: #fff;
+  background-color: $rojin-primary;
+  color: $rojin-text-on-brand;
   cursor: pointer;
 }
 input:focus,
@@ -470,14 +439,10 @@ input:focus,
     // box-shadow: 0 0 10px #719ECE;
 
 }
-@media only screen and (max-width: 768px) {
-  .app-toolbar__user {
+@media only screen and (max-width: $rojin-breakpoint-mobile) {
+  .chat-toolbar .chat-toolbar__user {
     max-width: min(52vw, 160px);
     font-size: 13px;
-  }
-
-  .app-toolbar__rest {
-    display: none;
   }
 
   .message-bubble {
@@ -490,8 +455,12 @@ input:focus,
 
   .chats-section {
     flex-direction: column;
-    height: calc(100vh - 50px);
+    flex: 1 1 auto;
     min-height: 0;
+    height: calc(100vh - #{$rojin-toolbar-height} - env(safe-area-inset-top, 0px));
+    height: calc(100dvh - #{$rojin-toolbar-height} - env(safe-area-inset-top, 0px));
+    max-height: calc(100vh - #{$rojin-toolbar-height} - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - #{$rojin-toolbar-height} - env(safe-area-inset-top, 0px));
   }
 
   .chats-sidebar {

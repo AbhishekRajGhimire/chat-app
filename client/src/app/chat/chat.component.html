@@ -1,16 +1,13 @@
-<mat-toolbar color="primary" class="app-toolbar">
-    <div class="app-toolbar__brand">
-      <span class="app-toolbar__lockup">
-        <span class="app-toolbar__name">Rojin</span><span class="app-toolbar__rest"> : the org chat</span>
-      </span>
-    </div>
-    <span class="app-toolbar__spacer"></span>
-    <span class="app-toolbar__user">Welcome, {{ toolbarLabel }}</span>
-    <a mat-stroked-button color="accent" class="profile-link" routerLink="/profile">Profile</a>
-    <button mat-raised-button color="warn" class="logout-button" (click)="logout()">
+<app-toolbar-shell class="chat-toolbar">
+    <app-brand-lockup uiToolbarBrand [showTagline]="!compactToolbar"></app-brand-lockup>
+    <ng-container uiToolbarActions>
+      <span class="chat-toolbar__user">Welcome, {{ toolbarLabel }}</span>
+      <a mat-stroked-button color="accent" class="chat-toolbar__profile" routerLink="/profile">Profile</a>
+      <button mat-raised-button color="warn" class="chat-toolbar__logout" type="button" (click)="logout()">
         Logout
-    </button>
-  </mat-toolbar>
+      </button>
+    </ng-container>
+  </app-toolbar-shell>
   
   <div class="chats-section" [class.chat-detail-active]="!!selectedUser">
     <div class="chats-sidebar">

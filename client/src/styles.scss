@@ -1,5 +1,18 @@
 /* You can add global styles to this file, and also import other style files */
 @import '~@angular/material/prebuilt-themes/indigo-pink.css';
-html, body { height: 100%; }
-body { margin: 0;;
+@import './app/ui/styles/tokens';
+
+html {
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* iOS legacy full-height */
+  min-height: -webkit-fill-available;
 }
