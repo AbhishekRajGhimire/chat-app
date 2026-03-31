@@ -31,7 +31,7 @@
         <ng-container *ngIf="!selectedUser">
             <div class="search-bar-container">
                 <div class="search-bar">
-                    <input matInput class="user-search" placeholder="Search registered users (online or offline)"
+                    <input matInput class="user-search" [placeholder]="searchPlaceholder"
                         [(ngModel)]="searchInput" (input)="filterUsers()" />
                 </div>
                 <mat-list class="search-results">
@@ -85,7 +85,7 @@
                     matInput
                     class="message-input__field"
                     [(ngModel)]="newMessage"
-                    placeholder="Type a message (Enter to send, Shift+Enter for new line)"
+                    [placeholder]="composerPlaceholder"
                     rows="1"
                     [disabled]="isSendingMessage"
                     (keydown)="onComposerKeydown($event)"

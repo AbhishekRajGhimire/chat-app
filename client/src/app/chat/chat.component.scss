@@ -545,6 +545,29 @@ input:focus,
     padding-bottom: 8px;
   }
 
+  .message-input {
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    align-items: flex-end;
+  }
+
+  .message-input__field {
+    font-size: 16px;
+    padding: 12px 10px;
+    min-height: 48px;
+  }
+
+  .message-input button {
+    padding: 10px 14px;
+    align-self: stretch;
+    min-height: 48px;
+  }
+
+  .user-search {
+    font-size: 16px;
+  }
+
   .search-results .mat-list-item {
     min-height: 48px;
     height: auto !important;

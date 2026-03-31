@@ -8,7 +8,7 @@ High-level architecture for the **Angular + Flask + Socket.IO** stack: how piece
 
 - **Frontend**: Angular SPA (dev server **:4200**), Angular Material, `socket.io-client`. JWT and username live in **`localStorage`**. In development, **`proxy.conf.json`** forwards `/api` and `/socket.io` to the backend.
 - **Backend**: Single process runs **Flask** REST and **Flask-SocketIO** on **:3000** (see `backend/main.py`). **SQLite** (`chat.db`, created next to the working directory when the backend runs from `backend/`) stores users, **conversations** (direct DMs today), and **messages** scoped to `conversation_id`. **Presence** is an in-memory list **`online_users`**: `(username, socket_session_id_or_empty)`.
-- **Realtime DMs**: Each connected client **joins a Socket.IO room named after their username** (`join_user`). Sending a message **emits `receive_message` into the recipient’s room** so delivery does not depend on a fragile socket-id map in the UI.
+- **Realtime DMs**: On **authenticated Socket.IO connect** (JWT in the handshake), the server **joins a room named after the JWT username** and tracks **`sid → username`**. Sending a message **emits `receive_message` into the recipient’s room**; the sender is taken only from the socket session, not from the client payload.
 
 ---
 
@@ -34,7 +34,8 @@ flowchart TB
 
   A --> RT
   A --> LS
-  LS -->|Bearer JWT on protected routes| API
+  LS -->|Bearer JWT on REST| API
+  LS -->|JWT in socket.io ?token=| WS
 
   A <-->|same-origin /api| PX
   A <-->|same-origin /socket.io| PX
@@ -43,7 +44,7 @@ flowchart TB
 
   API -->|users + messages CRUD| DB
   API -->|sign-in / sign-out<br/>mutate list| PRES
-  WS -->|join_user · disconnect<br/>bind sid + broadcast| PRES
+  WS -->|connect (verify JWT) · disconnect<br/>bind sid + broadcast| PRES
 
   WS -->|online_users broadcast| A
   WS -->|receive_message<br/>to room = recipient username| A
@@ -70,9 +71,8 @@ sequenceDiagram
   API->>DB: list all usernames except me
   API-->>B: directory for New Chat search
 
-  B->>WS: connect
-  B->>WS: join_user { username }
-  WS->>WS: join_room(username), update online_users
+  B->>WS: connect (handshake token = JWT)
+  WS->>WS: decode JWT, join_room(username), update online_users
   WS-->>B: online_users (broadcast to all)
 
   Note over B,WS: User opens thread with peer P
@@ -83,7 +83,7 @@ sequenceDiagram
 
   Note over B,API: User sends text T to P
 
-  B->>WS: send_message { from, recipient: P, message: T }
+  B->>WS: send_message { recipient: P, message: T }
   WS-->>B: receive_message to room P (peer's clients)
 
   B->>API: POST /api/dm/messages JSON { to_username: P, body: T } (JWT)
@@ -114,7 +114,7 @@ Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message`
 | Method | Path | JWT | Role |
 |--------|------|-----|------|
 | POST | `/api/signup` | No | Register user |
-| POST | `/api/signin` | No | Login; returns `access_token`; server adds user to `online_users` with empty sid until socket `join_user` |
+| POST | `/api/signin` | No | Login; returns `access_token`; server adds user to `online_users` with empty sid until an **authenticated** socket **connect** |
 | POST | `/api/signout` | Yes | Logout; remove user from `online_users` |
 | GET | `/api/chats_history` | Yes | Sidebar entries `{ username, display_name }` (you + direct-conversation peers) |
 | GET | `/api/directory_users` | Yes | All registered users except you (New Chat search) |
@@ -123,7 +123,7 @@ Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message`
 | GET/PATCH | `/api/me/profile` | Yes | Current user profile |
 | GET | `/api/users/<username>/profile` | Yes | Another user’s public profile card |
 
-See [`security.md`](./security.md) for remaining gaps (e.g. Socket.IO identity).
+See [`security.md`](./security.md) for LAN configuration (`.env`, CORS allowlist) and remaining hardening ideas.
 
 ---
 
@@ -131,14 +131,13 @@ See [`security.md`](./security.md) for remaining gaps (e.g. Socket.IO identity).
 
 | Direction | Event | Payload (conceptually) | Server behavior |
 |-----------|--------|---------------------------|-----------------|
-| C → S | *(connect)* | — | Accept connection |
-| C → S | `join_user` | `{ username }` | `join_room(username)`; set `online_users` row for that user to current `sid`; broadcast `online_users` |
+| C → S | *(connect)* | Handshake query **`token`** = access JWT | Reject if missing/invalid; decode JWT → **`sub`** (username); `join_room(username)`; bind **`sid → username`**; update `online_users`; broadcast `online_users` |
 | S → all | `online_users` | `[[username, sid], ...]` | Clients refresh presence + search lists |
-| C → S | `send_message` | `{ from, recipient, message }` | `emit('receive_message', …, room=recipient)` |
+| C → S | `send_message` | `{ recipient, message }` (optional legacy `recipientsid`) | Sender = **socket JWT identity only**; `emit('receive_message', …, room=recipient)` |
 | S → room | `receive_message` | `{ username, message, datetime }` | `username` is the **sender**; client appends to thread keyed by sender |
-| — | `disconnect` | — | Clear matching `sid` in `online_users`; broadcast `online_users` |
+| — | `disconnect` | — | Drop **`sid`** binding; clear matching `sid` in `online_users`; broadcast `online_users` |
 
-Legacy: server still accepts `recipientsid` instead of `recipient` for older clients.
+Legacy: server still accepts `recipientsid` instead of `recipient` for older clients. **`join_user`** is removed; presence is established on authenticated **`connect`** only.
 
 ---
 
@@ -150,19 +149,19 @@ Legacy: server still accepts `recipientsid` instead of `recipient` for older cli
 
 ### User signs in
 - Angular: `POST /api/signin` → stores `access_token` and `username` in **localStorage**.
-- Backend: verifies password, returns JWT; appends **`(username, "")`** to **`online_users`** (socket id filled in when the client emits **`join_user`**).
+- Backend: verifies password, returns JWT; appends **`(username, "")`** to **`online_users`** (socket id filled in when the client opens the chat and the **JWT-authenticated** socket **connect**s).
 
 ### Chat screen loads (`ChatComponent`)
 - `GET /api/chats_history` (JWT) → sidebar “Direct Messages”.
 - `GET /api/directory_users` (JWT) → “New Chat” search pool (everyone except you, not only online).
-- Socket.IO **`connect`** → then **`join_user`** with `username` from localStorage.
+- Socket.IO **`connect`** with **`token`** query param (JWT from localStorage); server joins rooms from the token (**no** `join_user`).
 - On each **`online_users`** broadcast, UI updates online badges / send eligibility hints.
 
 ### User opens a conversation with peer `P`
 - `GET /api/dm/messages/P` (JWT) loads history into the thread (empty array until the first message creates the direct **Conversation**).
 
 ### User sends a message to `P`
-1. **Socket**: `send_message` with `recipient: P` → server emits **`receive_message`** to room **`P`** (all tabs/sessions that joined as `P`).
+1. **Socket**: `send_message` with `recipient: P` (sender from JWT-bound socket) → server emits **`receive_message`** to room **`P`**.
 2. **HTTP**: `POST /api/dm/messages` with JSON body persists a row in **Message** linked to the direct **Conversation** (survives refresh; offline peer sees it later).
 
 ### User logs out
@@ -201,7 +200,7 @@ Legacy: server still accepts `recipientsid` instead of `recipient` for older cli
 - **SQLite** file is fine for demos; scaling out usually means a shared database and sticky sessions or a compatible realtime strategy.
 - **Secrets** and **CORS/Socket origins** are development-oriented; production needs env-based secrets, HTTPS, and locked origins (see [`security.md`](./security.md)).
 - **No end-to-end encryption**; the server can read message content.
-- **Trust model for `join_user`**: the username is supplied by the client; stronger setups authenticate the socket (JWT on connect) — documented as a gap in [`security.md`](./security.md).
+- **Socket trust model**: username for rooms and **`send_message`** comes from the **JWT** verified at **connect** (see [`security.md`](./security.md)).
 
 ---
 

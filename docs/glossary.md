@@ -98,7 +98,7 @@ Browser key-value storage that persists across tabs/restarts (until cleared). Th
 ## P
 
 **Presence**  
-Who is “online” right now. Here: in-memory **`online_users`** plus Socket.IO **`join_user`** / **`disconnect`**.
+Who is “online” right now. Here: in-memory **`online_users`** plus Socket.IO **authenticated `connect`** / **`disconnect`**.
 
 **Proxy (dev proxy)**  
 `client/src/proxy.conf.json` forwards `/api` and `/socket.io` from the Angular dev server to **:3000** so the browser talks to one port during development.
@@ -121,7 +121,7 @@ A named channel; **`emit(..., room=username)`** delivers only to sockets that **
 The **Flask + Socket.IO** process (typically **`python main.py`** on port **3000**).
 
 **Socket.IO**  
-Library on top of **WebSockets** (with fallbacks) for realtime events: **`connect`**, **`join_user`**, **`send_message`**, **`receive_message`**.
+Library on top of **WebSockets** (with fallbacks) for realtime events: **`connect`** (with JWT in this app), **`send_message`**, **`receive_message`**.
 
 **SPA (Single Page Application)**  
 One loaded HTML shell; **Angular** swaps views and talks to the API without full page reloads for each screen.

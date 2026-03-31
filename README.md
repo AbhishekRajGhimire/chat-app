@@ -73,11 +73,15 @@ From repo root:
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install flask flask-socketio flask-jwt-extended flask-bcrypt flask-cors eventlet
+pip install -r requirements.txt
+copy .env.example .env
+# Edit .env: set SECRET_KEY and JWT_SECRET_KEY for office/LAN (32+ random characters each).
 python main.py
 ```
 
-Backend runs on **`http://localhost:3000`**.
+Backend runs on **`http://localhost:3000`** (override with **`PORT`** / **`HOST`** in `.env`).
+
+**Environment (LAN/office):** Optional **`.env`** in `backend/` is loaded automatically if **`python-dotenv`** is installed (included in `requirements.txt`). See **`backend/.env.example`** for **`JWT_ACCESS_TOKEN_DAYS`**, **`CORS_ORIGINS`**, **`FLASK_DEBUG`**, and secrets.
 
 #### 2) Run the frontend
 

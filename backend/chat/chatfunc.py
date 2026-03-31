@@ -1,8 +1,8 @@
 import datetime
+from typing import Dict, Optional
 
 from flask import jsonify, request
-from flask_cors import CORS
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import decode_token, get_jwt_identity, jwt_required
 from flask_socketio import emit, join_room
 
 from .conversations import get_or_create_direct_conversation
@@ -10,11 +10,34 @@ from .database import connection, cursor
 
 from chat import app, online_users, socketio
 
-cors = CORS(app)
+# Maps Socket.IO session id → JWT username (set on authenticated connect only).
+socket_user_by_sid: Dict[str, str] = {}
 
 
 def _utc_now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def _handshake_bearer_token() -> Optional[str]:
+    """Token from Engine.IO query (?token=) or Authorization header."""
+    raw = request.args.get("token")
+    if raw and isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    auth = request.headers.get("Authorization") or ""
+    if auth.startswith("Bearer "):
+        return auth[7:].strip() or None
+    return None
+
+
+def _username_from_jwt_string(token: str) -> Optional[str]:
+    try:
+        decoded = decode_token(token)
+        sub = decoded.get("sub")
+        if isinstance(sub, str) and sub.strip():
+            return sub.strip()
+    except Exception:
+        return None
+    return None
 
 
 def _direct_conversation_id_for_pair(user_id_a: int, user_id_b: int):
@@ -185,35 +208,34 @@ def directory_users():
     )
 
 
-@socketio.on("connect")
-def on_connect():
-    print("socket connect", request.sid)
-
-
-@socketio.on("join_user")
-def on_join_user(data):
-    """Client sends logged-in username; join a room named after them for reliable DM delivery."""
-    username = (data or {}).get("username")
-    if not username or not isinstance(username, str):
-        return
-    username = username.strip()
-    if not username:
-        return
+def _register_socket_presence(username: str, sid: str) -> None:
     join_room(username)
     updated = False
     for index, user_tuple in enumerate(online_users):
         if user_tuple[0] == username:
-            online_users[index] = (username, request.sid)
+            online_users[index] = (username, sid)
             updated = True
             break
     if not updated:
-        online_users.append((username, request.sid))
-    print("join_user", username, request.sid, online_users)
+        online_users.append((username, sid))
+
+
+@socketio.on("connect")
+def on_connect():
+    token = _handshake_bearer_token()
+    if not token:
+        return False
+    username = _username_from_jwt_string(token)
+    if not username:
+        return False
+    socket_user_by_sid[request.sid] = username
+    _register_socket_presence(username, request.sid)
     emit("online_users", online_users, broadcast=True)
 
 
 @socketio.on("disconnect")
 def on_disconnect():
+    socket_user_by_sid.pop(request.sid, None)
     sid = request.sid
     for index, user_tuple in enumerate(online_users):
         if user_tuple[1] == sid:
@@ -224,12 +246,11 @@ def on_disconnect():
 
 @socketio.on("send_message")
 def handle_message(data):
-    data = data or {}
-    sender = data.get("from")
-    message = data.get("message")
-    if not isinstance(sender, str) or not sender.strip():
+    sender = socket_user_by_sid.get(request.sid)
+    if not sender:
         return
-    sender = sender.strip()
+    data = data or {}
+    message = data.get("message")
     if message is None or not isinstance(message, str):
         return
     recipient = data.get("recipient")

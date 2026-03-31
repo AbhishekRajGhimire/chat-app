@@ -3,6 +3,7 @@ import {
   ElementRef,
   NgZone,
   OnDestroy,
+  OnInit,
   ViewChild,
 } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -24,7 +25,7 @@ interface Message {
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
 })
-export class ChatComponent implements OnDestroy {
+export class ChatComponent implements OnInit, OnDestroy {
   @ViewChild('messageScrollHost')
   private messageScrollHost?: ElementRef<HTMLElement>;
 
@@ -44,6 +45,14 @@ export class ChatComponent implements OnDestroy {
   newMessage = '';
   /** True while DM POST is in flight (prevents double send). */
   isSendingMessage = false;
+
+  /** Match `chat.component.scss` mobile breakpoint — short placeholders, no keyboard hints. */
+  composerPlaceholder = 'Type a message (Enter to send, Shift+Enter for new line)';
+  searchPlaceholder = 'Search registered users (online or offline)';
+
+  private mediaQuery?: MediaQueryList;
+  private readonly mqHandler = () =>
+    this.zone.run(() => this.applyViewportPlaceholders());
 
   constructor(
     private http: HttpClient,
@@ -89,14 +98,14 @@ export class ChatComponent implements OnDestroy {
       }
     );
 
-    // Local testing: connect to same-origin Socket.IO.
-    // With `npm run start`, Angular proxies `/socket.io/*` to the backend at :3000.
-    this.socket = io();
+    // Socket.IO: JWT in query string (verified on connect); sender identity comes from the server.
+    const accessToken = localStorage.getItem('access_token') || '';
+    this.socket = io({
+      query: { token: accessToken },
+    });
     this.socket.on('connect', () => {
       this.zone.run(() => {
-        if (this.currentUser) {
-          this.socket.emit('join_user', { username: this.currentUser });
-        }
+        /* presence registered in server connect handler */
       });
     });
     this.socket.on('online_users', (users: any) => {
@@ -131,9 +140,42 @@ export class ChatComponent implements OnDestroy {
     });
 
     this.socket.connect();
+    this.applyViewportPlaceholders();
+  }
+
+  ngOnInit(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    this.mediaQuery = window.matchMedia('(max-width: 768px)');
+    if (this.mediaQuery.addEventListener) {
+      this.mediaQuery.addEventListener('change', this.mqHandler);
+    } else {
+      this.mediaQuery.addListener(this.mqHandler as any);
+    }
+  }
+
+  private applyViewportPlaceholders(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const compact = window.matchMedia('(max-width: 768px)').matches;
+    this.composerPlaceholder = compact
+      ? 'Message'
+      : 'Type a message (Enter to send, Shift+Enter for new line)';
+    this.searchPlaceholder = compact
+      ? 'Search people'
+      : 'Search registered users (online or offline)';
   }
 
   ngOnDestroy(): void {
+    if (this.mediaQuery) {
+      if (this.mediaQuery.removeEventListener) {
+        this.mediaQuery.removeEventListener('change', this.mqHandler);
+      } else {
+        this.mediaQuery.removeListener(this.mqHandler as any);
+      }
+    }
     if (this.socket) {
       this.socket.disconnect();
     }
@@ -253,7 +295,6 @@ export class ChatComponent implements OnDestroy {
     const peer = this.selectedUser;
 
     this.socket.emit('send_message', {
-      from: this.currentUser,
       recipient: peer,
       message: text,
     });
