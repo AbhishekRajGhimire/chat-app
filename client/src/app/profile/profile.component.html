@@ -1,0 +1,66 @@
+<mat-toolbar color="primary" class="profile-toolbar">
+  <button mat-icon-button type="button" routerLink="/" aria-label="Back to chat">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Your profile</span>
+</mat-toolbar>
+
+<div class="profile-wrap">
+  <mat-card *ngIf="loading" class="profile-card">
+    <p class="profile-hint">Loading…</p>
+  </mat-card>
+
+  <mat-card *ngIf="!loading" class="profile-card">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <p class="profile-lead">
+        Display name is shown in the directory and chat lists. Username stays your login id.
+      </p>
+
+      <mat-form-field appearance="outline" class="profile-field">
+        <mat-label>Display name</mat-label>
+        <input matInput formControlName="display_name" placeholder="How others see you" />
+        <mat-hint>Optional; leave empty to use your username</mat-hint>
+        <mat-error *ngIf="form.get('display_name')?.hasError('maxlength')">
+          At most 120 characters
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="profile-field">
+        <mat-label>Avatar URL</mat-label>
+        <input matInput formControlName="avatar_url" placeholder="https://…" />
+        <mat-hint>Image URL only; hosting is up to you</mat-hint>
+        <mat-error *ngIf="form.get('avatar_url')?.hasError('maxlength')">
+          URL too long
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="profile-field profile-field--bio">
+        <mat-label>Bio</mat-label>
+        <textarea
+          matInput
+          formControlName="bio"
+          rows="4"
+          placeholder="Short intro (optional)"
+        ></textarea>
+        <mat-error *ngIf="form.get('bio')?.hasError('maxlength')">
+          At most 2000 characters
+        </mat-error>
+      </mat-form-field>
+
+      <p class="profile-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+      <div class="profile-actions">
+        <button mat-stroked-button type="button" (click)="cancel()" [disabled]="saving">
+          Cancel
+        </button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          [disabled]="saving || form.invalid">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>

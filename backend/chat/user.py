@@ -1,7 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import request, jsonify
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from flask_cors import CORS
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 import sqlite3
 
 from chat import app, jwt, online_users
@@ -10,7 +9,6 @@ from chat import app, jwt, online_users
 from .database import connection, cursor
 
 bcrypt = Bcrypt(app)
-cors = CORS(app, supports_credentials=True)
 
 # Task 3: Add /api/signup route here
 @app.route('/api/signup', methods = ['POST'])
@@ -26,8 +24,18 @@ def signup():
     if result:
         return 'Username already exists', 409
 
-    cursor.execute("INSERT INTO User (username,password) VALUES (?, ?)",
-                (username, hashed_password))  # Assuming the first column is the ID
+    cursor.execute(
+        "INSERT INTO User (username,password) VALUES (?, ?)",
+        (username, hashed_password),
+    )
+    new_id = cursor.lastrowid
+    cursor.execute(
+        """
+        INSERT INTO UserProfile (user_id, display_name, updated_at)
+        VALUES (?, ?, datetime('now'))
+        """,
+        (new_id, username),
+    )
     connection.commit()
     response = jsonify({'message': 'User created successfully'}), 201
     return response
