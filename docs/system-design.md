@@ -16,38 +16,38 @@ High-level architecture for the **Angular + Flask + Socket.IO** stack: how piece
 
 ```mermaid
 flowchart TB
-  U["User (browser)"] -->|Loads SPA| A["Angular app\n:4200"]
+  U["User (browser)"] -->|Loads SPA| A["Angular app on port 4200"]
 
   subgraph FE[Frontend]
     A
-    LS["localStorage\naccess_token + username"]
-    PX["Angular dev proxy\nproxy.conf.json"]
-    RT["App routes:\n/ · /signin · /signup · /profile"]
+    LS["localStorage JWT and username"]
+    PX["Dev proxy proxy.conf.json"]
+    RT["Routes root signin signup profile"]
   end
 
-  subgraph BE["Backend :3000"]
-    API["Flask REST\n/api/*"]
-    WS["Flask-SocketIO\n/socket.io/*"]
-    DB[(SQLite\nchat.db)]
-    PRES["online_users\nin-memory presence"]
+  subgraph BE [Backend port 3000]
+    API["Flask REST /api"]
+    WS["Flask-SocketIO"]
+    DB[(SQLite chat.db)]
+    PRES["online_users presence"]
   end
 
   A --> RT
   A --> LS
   LS -->|Bearer JWT on REST| API
-  LS -->|JWT in socket.io ?token=| WS
+  LS -->|JWT in socket query| WS
 
-  A <-->|same-origin /api| PX
-  A <-->|same-origin /socket.io| PX
+  A <-->|proxy /api| PX
+  A <-->|proxy /socket.io| PX
   PX -->|forward| API
   PX -->|forward| WS
 
-  API -->|users + messages CRUD| DB
-  API -->|sign-in / sign-out<br/>mutate list| PRES
-  WS -->|connect (verify JWT) · disconnect<br/>bind sid + broadcast| PRES
+  API -->|persist users and messages| DB
+  API -->|sign-in sign-out updates| PRES
+  WS -->|JWT verify connect disconnect broadcast| PRES
 
   WS -->|online_users broadcast| A
-  WS -->|receive_message<br/>to room = recipient username| A
+  WS -->|receive_message to peer room| A
 ```
 
 **Production note**: You would typically serve the built Angular app and API under one **HTTPS** origin (or two known origins with strict CORS). The proxy exists for **local development** only.
@@ -58,37 +58,37 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-  participant B as Browser (Angular)
+  participant B as Browser Angular
   participant API as Flask REST
   participant WS as Socket.IO server
   participant DB as SQLite
 
-  B->>API: GET /api/chats_history (JWT)
+  B->>API: GET chats_history with JWT
   API->>DB: query threads for user
   API-->>B: list of usernames
 
-  B->>API: GET /api/directory_users (JWT)
-  API->>DB: list all usernames except me
+  B->>API: GET directory_users with JWT
+  API->>DB: list usernames except me
   API-->>B: directory for New Chat search
 
-  B->>WS: connect (handshake token = JWT)
-  WS->>WS: decode JWT, join_room(username), update online_users
-  WS-->>B: online_users (broadcast to all)
+  B->>WS: connect with JWT in handshake
+  WS->>WS: decode JWT join room update presence
+  WS-->>B: broadcast online_users
 
   Note over B,WS: User opens thread with peer P
 
-  B->>API: GET /api/dm/messages/P (JWT)
-  API->>DB: resolve direct Conversation; load Message rows
+  B->>API: GET dm messages for P with JWT
+  API->>DB: load Conversation and Message rows
   API-->>B: message array
 
   Note over B,API: User sends text T to P
 
-  B->>WS: send_message { recipient: P, message: T }
-  WS-->>B: receive_message to room P (peer's clients)
+  B->>WS: send_message recipient P and body T
+  WS-->>B: receive_message to room P
 
-  B->>API: POST /api/dm/messages JSON { to_username: P, body: T } (JWT)
-  API->>DB: get_or_create direct Conversation; INSERT Message
-  API-->>B: 201
+  B->>API: POST dm messages to_username P body T JWT
+  API->>DB: upsert Conversation insert Message
+  API-->>B: HTTP 201
 ```
 
 If the peer is **offline**, the Socket.IO emit reaches **no sockets** in room `P`, but **HTTP POST still persists** the message for when they load history later.
