@@ -1,3 +1,5 @@
+@import '../ui/styles/tokens';
+
 .signup-form {
     margin-top: 50px;
     height: 100%;
@@ -66,8 +68,8 @@ form {
 
 .signup-toolbar {
     justify-content: center;
-    background-color: #4a154b;
-    color: white;
+    background-color: $rojin-primary;
+    color: $rojin-text-on-brand;
     font-family: "Montserrat", sans-serif !important;
 }
 
@@ -75,8 +77,8 @@ form {
     width: 100%;
     height: 60px;
     margin-top: 15px;
-    background-color: #4a154b;
-    color: white;
+    background-color: $rojin-primary;
+    color: $rojin-text-on-brand;
     font-family: "Montserrat", sans-serif !important;
 }
 
@@ -90,7 +92,7 @@ form {
 }
 
 .mat-form-field-underline {
-    background-color: #4a154b !important;
+    background-color: $rojin-primary !important;
 }
 
 .go-to-signin-section {
@@ -101,5 +103,9 @@ form {
 .go-to-signin-text {
     cursor: pointer;
     text-decoration: none;
-    color: #4a154b;
+    color: $rojin-link;
+
+    &:hover {
+      color: $rojin-primary;
+    }
 }

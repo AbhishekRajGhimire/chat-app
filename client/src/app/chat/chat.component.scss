@@ -61,10 +61,10 @@
   padding: 10px;
   box-sizing: border-box;
   .active {
-    background-color: rgba(128, 128, 128, 0.438);
+    background-color: $rojin-overlay-active;
   }
   .mat-list-item:hover {
-    background-color: rgba(128, 128, 128, 0.438);
+    background-color: $rojin-overlay-hover;
     cursor: pointer;
   }
 }
@@ -155,7 +155,7 @@ width: 100%;
   color: white;
   font-family: 'Victor Mono', monospace;
     height: 39px!important;
-    border-bottom: 1px solid ;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
 }
 .mat-list-item-content{
@@ -242,10 +242,10 @@ width: 100%;
 }
 
 .search-bar {
-  background-color: #f5f5f5;
+  background-color: $rojin-bg-search;
   border: 1px solid $rojin-border;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 .user-search{
   width: 100%;
@@ -273,8 +273,7 @@ width: 100%;
     align-items: center;
   }
   .mat-list-item:hover{
-    background: rgba(128, 128, 128, 0.438)
-
+    background: $rojin-overlay-search-hover;
   }
 
   &__hint {
@@ -301,7 +300,7 @@ width: 100%;
   margin-left: 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #2e7d32;
+  color: $rojin-online;
   text-transform: uppercase;
 }
 
@@ -375,8 +374,8 @@ width: 100%;
   &--received {
     background: $rojin-bg-elevated;
     color: $rojin-text-body;
-    border: 1px solid rgba(74, 21, 75, 0.35);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    border: 1px solid $rojin-bubble-received-border;
+    box-shadow: 0 1px 3px $rojin-bubble-received-shadow;
 
     .message-bubble__meta {
       text-align: left;
@@ -387,11 +386,11 @@ width: 100%;
     background-color: $rojin-primary;
     color: $rojin-text-on-brand;
     border: 1px solid $rojin-primary;
-    box-shadow: 0 1px 2px rgba(43, 10, 44, 0.2);
+    box-shadow: 0 2px 6px $rojin-bubble-sent-shadow;
 
     .message-bubble__meta {
       text-align: right;
-      color: rgba(255, 255, 255, 0.75);
+      color: rgba(255, 255, 255, 0.78);
     }
   }
 }
@@ -404,8 +403,14 @@ width: 100%;
 margin-bottom: 0px !important;
   border-radius: 10px;
   // margin-right: 8px;
-  border: 1px solid $rojin-primary;
+  border: 1px solid $rojin-border;
+  background: $rojin-bg-elevated;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
+  &:focus-within {
+    border-color: $rojin-primary;
+    box-shadow: 0 0 0 3px $rojin-focus-ring;
+  }
 }
 
 .message-input__field {
@@ -431,6 +436,15 @@ margin-bottom: 0px !important;
   background-color: $rojin-primary;
   color: $rojin-text-on-brand;
   cursor: pointer;
+  transition: background-color 0.15s ease, filter 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: $rojin-primary-soft;
+  }
+
+  &:active:not(:disabled) {
+    filter: brightness(0.92);
+  }
 }
 input:focus,
 .message-input__field:focus {

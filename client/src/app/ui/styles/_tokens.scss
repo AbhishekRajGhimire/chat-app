@@ -4,20 +4,39 @@
 // or add "stylePreprocessorOptions.includePaths" and @import 'tokens';
 // ---------------------------------------------------------------------------
 
-// Brand
+// Brand (keep in sync with Material primary map default hue 800 / 900 in styles.scss)
 $rojin-primary-dark: #2b0a2c;
 $rojin-primary: #4a154b;
+$rojin-primary-soft: #6b3a6d;
 $rojin-text-on-brand: #fff;
 $rojin-accent-outline: rgba(255, 255, 255, 0.55);
 
-// Surfaces
-$rojin-bg-thread: #f5f5f7;
+// Surfaces — slight violet warmth so the UI matches the purple chrome
+$rojin-bg-app: #fbfafc;
+$rojin-bg-thread: #f3f0f5;
 $rojin-bg-elevated: #fff;
-$rojin-border: #ccc;
+$rojin-bg-search: #ebe6ef;
+$rojin-border: #d8d0dc;
+$rojin-border-strong: #c4b8c8;
 $rojin-text-body: #2b0a2c;
-$rojin-text-muted: #666;
-$rojin-text-meta: #888;
-$rojin-online: #2e7d32;
+$rojin-text-muted: #5c5260;
+$rojin-text-meta: #7a6f7e;
+$rojin-online: #1b5e20;
+$rojin-online-soft: #e8f5e9;
+
+// Sidebar / list interaction (on $rojin-primary)
+$rojin-overlay-hover: rgba(255, 255, 255, 0.12);
+$rojin-overlay-active: rgba(255, 255, 255, 0.2);
+$rojin-overlay-search-hover: rgba(74, 21, 75, 0.08);
+
+// Message chrome
+$rojin-bubble-received-border: rgba(74, 21, 75, 0.22);
+$rojin-bubble-received-shadow: rgba(43, 10, 44, 0.07);
+$rojin-bubble-sent-shadow: rgba(43, 10, 44, 0.18);
+
+// Focus / links
+$rojin-focus-ring: rgba(74, 21, 75, 0.35);
+$rojin-link: #5c2760;
 
 // Layout
 $rojin-breakpoint-mobile: 768px;

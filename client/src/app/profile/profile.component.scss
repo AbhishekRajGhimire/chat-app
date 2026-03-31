@@ -1,5 +1,9 @@
+@import '../ui/styles/tokens';
+
 .profile-toolbar {
   font-family: "Montserrat", sans-serif;
+  background-color: $rojin-primary-dark !important;
+  color: $rojin-text-on-brand !important;
 }
 
 .profile-wrap {
@@ -15,7 +19,7 @@
 .profile-lead {
   font-family: "Montserrat", sans-serif;
   font-size: 14px;
-  color: #5c4f4a;
+  color: $rojin-text-muted;
   margin: 0 0 16px;
   line-height: 1.45;
 }
