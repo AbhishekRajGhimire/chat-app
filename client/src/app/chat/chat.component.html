@@ -43,7 +43,7 @@
                     </div>
                     <mat-list-item *ngFor="let entry of filteredUsers" (click)="selectUser(entry.username)">
                         <span class="search-result-name">{{ entry.display_name }}</span>
-                        <span class="search-result-username" *ngIf="entry.display_name !== entry.username">@{{ entry.username }}</span>
+                        <span class="search-result-username" *ngIf="entry.display_name !== entry.username">&#64;{{ entry.username }}</span>
                         <span *ngIf="isUserOnline(entry.username)" class="search-result-online">Online</span>
                     </mat-list-item>
                 </mat-list>
