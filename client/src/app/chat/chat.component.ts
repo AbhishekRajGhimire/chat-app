@@ -21,9 +21,10 @@ interface Message {
 }
 
 @Component({
-  selector: 'app-chat',
-  templateUrl: './chat.component.html',
-  styleUrls: ['./chat.component.scss'],
+    selector: 'app-chat',
+    templateUrl: './chat.component.html',
+    styleUrls: ['./chat.component.scss'],
+    standalone: false
 })
 export class ChatComponent implements OnInit, OnDestroy {
   @ViewChild('messageScrollHost')
