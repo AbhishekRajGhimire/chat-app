@@ -1,112 +1,97 @@
-# Evolution roadmap — profiles, groups, and scalable chat
+# Evolution roadmap — beyond today’s DM + profiles baseline
 
-This document captures a **recommended direction** for growing Rojin beyond the current **1:1 DM + SQLite + in-memory presence** design. It is a **planning reference**, not a commitment or task list. For the **current** architecture, see [`system-design.md`](./system-design.md). For **security** work that should accompany API changes, see [`security.md`](./security.md).
-
----
-
-## Goals
-
-- **Profiles**: per-user settings and display identity without breaking login or foreign keys.
-- **Group chat**: multiple participants in one thread (direct DMs already use **`Conversation`** + **`Message.conversation_id`**).
-- **Robust identity**: stable ids for APIs and data; human-friendly names for search and UI.
-- **Scalability**: conversation-centric storage and realtime patterns that work as history grows and (optionally) multiple server processes appear later.
+This document is **what could come next**, not the live spec. For **what exists today** (REST routes, schema, Socket.IO, `ui/` layer, JWT), see [`system-design.md`](./system-design.md). For **security checklists**, see [`security.md`](./security.md). For **ports, firewall, LAN access**, see [`../deployment/home-deployment.md`](../deployment/home-deployment.md).
 
 ---
 
-## Identity: user id, username, display name
+## Delivered baseline (no longer tracked here)
 
-The **`User`** table already has an integer **`id`** primary key. Use that as the **canonical identity** for all new features:
+The following are **already in the repo**; details live in system-design / security docs rather than this roadmap:
 
-| Field | Role |
-|-------|------|
-| **`User.id`** | Foreign keys, memberships, message sender, internal APIs. Never shown as “type this to add me” unless you explicitly want that. |
-| **`username`** (unique) | Login handle (e.g. `@alice`). Keep stable or change rarely by policy. |
-| **`display_name`** (new, optional) | Search and UI; can change without breaking relations. |
-
-**Search**: expose **display name + username** in directory/search APIs; resolve invites to **`user_id`** on the server. Users do not need to memorize numeric ids.
-
----
-
-## Profiles
-
-**Option A — columns on `User`**: `display_name`, `avatar_url`, `bio`, `updated_at`. Simple for SQLite demos.
-
-**Option B — `UserProfile` table**: `user_id` PK / FK → `User(id)`. Cleaner if profiles grow large or you want optional profiles.
-
-**APIs** (with JWT):
-
-- `GET /api/me` or `GET /api/me/profile` — current user’s profile.
-- `PATCH /api/me/profile` — updates; **never** trust client-sent `user_id` as “who to edit”; derive from **`get_jwt_identity()`** (then map to `user_id`).
-
-**Public cards** (for search / member lists): `GET /api/users/:id/public` or search results embedding **limited** fields (no email unless policy allows).
+- **Identity**: `User.id` for keys; `username` for login; **`UserProfile`** for optional `display_name`, `avatar_url`, `bio`.
+- **Profile APIs**: `GET` / `PATCH /api/me/profile` (JWT-bound); public card `GET /api/users/<username>/profile`.
+- **Directory / sidebar**: `chats_history` and `directory_users` already return **`display_name`** (fallback to username).
+- **DM storage**: **`Conversation`** (direct), **`ConversationMember`**, **`Message`** with **`conversation_id`**; legacy pairwise `Message` shape is **dropped on startup** in `database.py` when present (no backfill).
+- **Realtime DMs**: JWT on Socket.IO **connect**; **`send_message`** sender from socket session only; per-**username** rooms for delivery.
+- **Client**: shared **`ui/`** tokens + toolbar shell; Material theme aligned with brand; mobile viewport / safe-area handling.
 
 ---
 
-## From pairwise DMs to conversations
+## Goals (still ahead)
 
-**Current (DMs):** **`Conversation`**, **`ConversationMember`**, and **`Message`** with **`conversation_id`** are implemented for **direct** threads (normalized user pair + unique index). **Group** conversations are not exposed in the API yet.
-
-### Target model (industry-standard pattern) — extended with groups
-
-| Table | Purpose |
-|-------|--------|
-| **`Conversation`** | `id`, `type` (`direct` \| `group`), `title` (nullable for DMs), `created_at`, optional `created_by_user_id`. |
-| **`ConversationMember`** | `conversation_id`, `user_id`, `role` (`owner`, `admin`, `member`), `joined_at`. Unique `(conversation_id, user_id)`. |
-| **`Message`** (evolved) | `conversation_id`, `sender_user_id`, `body`, `created_at`; optional `client_message_id` for idempotent sends. |
-
-**Direct messages**: one `Conversation` row with `type=direct` and **exactly two** members. Enforce **uniqueness of the pair** (e.g. normalized `(user_low_id, user_high_id)` with a unique constraint, or equivalent application logic) so the same two users don’t get duplicate DM threads.
-
-**Group messages**: one `Conversation` with `type=group`, many **`ConversationMember`** rows, many **`Message`** rows sharing `conversation_id`.
-
-**Reads**: index **`(conversation_id, created_at)`** or **`(conversation_id, id)`**; paginate (`LIMIT` / cursor) for long threads.
-
-### Legacy SQLite files
-
-Older dev databases used pairwise **`Message`** (`sender_id` / `recipient_id`). On startup, **`database.py`** detects that shape, **drops** the old conversation/message tables, and recreates the new schema (or delete **`chat.db`** manually). There is **no** automatic backfill of old pairwise rows into conversations.
+- **Group chat**: multiple participants in one thread using the same conversation-centric tables (`type=group`, many members).
+- **Realtime for groups**: move from username-only rooms to **per-conversation** (and optionally per-user) channels.
+- **Policy (optional)**: contacts / invites if DMs should require accept.
+- **Deployment (optional)**: **HTTPS on LAN/org** via internal CA or tools like **mkcert**, reverse proxy, and strict **`CORS_ORIGINS`**.
 
 ---
 
-## Discovery: directory vs contacts
+## Group chat (target shape)
 
-- **Open directory** (similar to current **`directory_users`**): any registered user can start a chat — fine for **small orgs** and internal tools.
-- **Contacts / friend requests** (optional): tables like **`Contact`** or **`FriendRequest`** (`from_user_id`, `to_user_id`, `status`) if DMs should require **accept** before messaging.
-- **Groups**: create conversation, then **invite** by username or internal id; server resolves to **`user_id`** and inserts **`ConversationMember`**.
+The schema already allows `Conversation.type = 'group'`; **APIs and UI** are the gap.
+
+| Piece | Direction |
+|-------|-----------|
+| **`Conversation`** | `type=group`, optional `title`, `created_at`; members in **`ConversationMember`**. |
+| **`Message`** | Same as today: `conversation_id`, `sender_user_id`, `body`, timestamps; paginate long threads. |
+| **APIs** | Create group, list my groups, list members, add/remove (with roles), list/post messages by **`conversation_id`**. |
+| **Uniqueness** | DMs stay enforced by normalized pair; groups are many-to-many via membership. |
 
 ---
 
 ## Realtime (Socket.IO) evolution
 
-Current design uses **per-username rooms** for DMs. For groups and cleaner scaling:
+Today: **per-username** rooms for DM delivery. For groups and clearer scaling:
 
 | Pattern | Use |
-|--------|-----|
-| **Per-user notify channel** | `join_room` keyed by **`user_id`** (or authenticated session) — “you have new activity” / unread counts. |
-| **Per-conversation channel** | `join_room("conv:" + conversation_id)` when the client **opens** that thread; **`emit`** live messages and typing to that room. |
+|---------|-----|
+| **Per-user notify channel** | `join_room` keyed by **`user_id`** (or session) — unread / activity signals. |
+| **Per-conversation channel** | `join_room("conv:" + conversation_id)` while the thread is open; **`emit`** live messages (and typing) there. |
 
-Payloads should include **`conversation_id`** and **`sender_user_id`** (and optionally denormalized username for display). Align with **JWT-authenticated sockets** (see [`security.md`](./security.md)) before exposing sensitive group metadata.
+Payloads should carry **`conversation_id`** and **`sender_user_id`** (plus display hints as needed). Keep **JWT-authenticated connect** and server-side sender identity (see [`security.md`](./security.md)).
 
 ---
 
-## Suggested implementation order
+## Discovery: directory vs contacts (optional)
 
-1. **Profiles** — extend schema + `GET/PATCH /api/me/profile` with strict JWT binding; minimal UI.
-2. **Conversation + ConversationMember + message (direct)** — **done** for DMs; legacy pairwise DBs are reset on load (see above). **Group** chat still below.
-3. **Group APIs** — create group, list members, add/remove member, post/list messages by **`conversation_id`**.
-4. **Socket.IO** — conversation rooms; optional user-level notification channel.
-5. **Search & social** — display name search, optional friend/contact flows.
+- **Open directory** (current **`directory_users`**) fits small orgs.
+- **Contacts / friend requests** (optional later): e.g. **`Contact`** or **`FriendRequest`** if DMs require **accept** before messaging.
+
+---
+
+## LAN / organization: internal HTTPS (optional)
+
+For **trusted** HTTPS **without** exposing the app to the public internet, encryption and naming are separate concerns:
+
+- **Name**: internal DNS (router, Pi-hole, AD DNS, etc.) so e.g. `https://rojin.corp.lan` resolves to the server.
+- **Certificate**: either **org PKI** / AD CS (machines already trust the root), **mkcert** (install the local CA on each device), or **self-signed** (browsers warn until trusted manually).
+- **Serving**: usually a **reverse proxy** (Caddy, nginx, …) terminates TLS, serves the **built** Angular app, and proxies **`/api`** and **`/socket.io`** to Flask with **WebSocket** upgrades enabled.
+- **App config**: set **`CORS_ORIGINS`** (and matching Socket.IO allowed origins) to that **`https://…`** origin — see [`security.md`](./security.md).
+
+This is **optional hardening** for office Wi‑Fi; HTTP on a trusted LAN remains common for internal demos.
+
+---
+
+## Suggested implementation order (remaining)
+
+1. **Group APIs** — create/list/join, members, messages by `conversation_id`.
+2. **Socket.IO** — conversation rooms (and optional user-level notify); align payloads with group HTTP API.
+3. **Optional** — contacts / friend requests; richer search (beyond directory list).
+4. **Optional** — internal HTTPS + reverse proxy + env hardening for org LAN.
 
 ---
 
 ## Non-goals (for this roadmap doc)
 
 - **End-to-end encryption** — orthogonal; server still routes ciphertext if added later.
-- **Multi-region / sharding** — out of scope; conversation + pagination is enough for “next step” scale.
-- **Exact API shapes** — finalize when implementing; this doc is architectural guidance only.
+- **Multi-region / sharding** — out of scope here; pagination and conversation ids are the near-term scale lever.
+- **Exact API shapes** — finalize when implementing; this doc stays architectural.
 
 ---
 
 ## Related documentation
 
-- [`system-design.md`](./system-design.md) — today’s components and flows.
-- [`security.md`](./security.md) — JWT on all private routes, JSON bodies for messages, socket auth.
+- [`system-design.md`](./system-design.md) — current components and flows.
+- [`security.md`](./security.md) — JWT, CORS, socket auth, production/LAN checklists.
+- [`../deployment/home-deployment.md`](../deployment/home-deployment.md) — LAN deployment steps.
 - [`glossary.md`](./glossary.md) — terms (JWT, CORS, SPA, etc.).
