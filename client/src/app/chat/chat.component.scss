@@ -63,7 +63,7 @@
   .active {
     background-color: $rojin-overlay-active;
   }
-  .mat-list-item:hover {
+  .mat-mdc-list-item:hover {
     background-color: $rojin-overlay-hover;
     cursor: pointer;
   }
@@ -149,7 +149,7 @@ width: 100%;
 {
   margin-top: 0px;
   padding-top: 0px;
-.mat-list-item{
+.mat-mdc-list-item{
   font-size: 15px;
   text-align: start;
   color: white;
@@ -158,8 +158,9 @@ width: 100%;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
 }
-.mat-list-item-content{
-  padding: 0px;
+.mat-mdc-list-item .mdc-list-item__content,
+.mat-mdc-list-item .mat-mdc-list-item-unscoped-content{
+  padding: 0;
 }
 
 
@@ -266,13 +267,13 @@ width: 100%;
   max-height: 200px;
   overflow-y: auto;
   z-index: 1;
-  .mat-list-item{
+  .mat-mdc-list-item{
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
-  .mat-list-item:hover{
+  .mat-mdc-list-item:hover{
     background: $rojin-overlay-search-hover;
   }
 
@@ -521,7 +522,7 @@ input:focus,
     border-radius: 0 0 4px 4px;
   }
 
-  .chat-users-list .mat-list-item {
+  .chat-users-list .mat-mdc-list-item {
     min-height: 48px;
     height: auto !important;
     padding-top: 8px;
@@ -551,7 +552,7 @@ input:focus,
     font-size: 16px;
   }
 
-  .search-results .mat-list-item {
+  .search-results .mat-mdc-list-item {
     min-height: 48px;
     height: auto !important;
   }
