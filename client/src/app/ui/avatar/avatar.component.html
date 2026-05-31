@@ -1,0 +1,15 @@
+<span
+  class="avatar"
+  [style.width.px]="size"
+  [style.height.px]="size"
+  [style.font-size.px]="size * 0.42"
+  [style.background]="imageUrl ? 'transparent' : color"
+  [attr.aria-label]="name || seed"
+  role="img"
+>
+  @if (imageUrl) {
+    <img class="avatar__img" [src]="imageUrl" [alt]="name || seed" />
+  } @else {
+    <span class="avatar__initials">{{ initials }}</span>
+  }
+</span>

@@ -125,15 +125,13 @@ export class ChatComponent implements OnInit, OnDestroy {
           return;
         }
         const from = String(data.username);
-        const messageDate = new Date(data.datetime);
-        const formattedDate = Number.isNaN(messageDate.getTime())
-          ? String(data.datetime)
-          : messageDate.toLocaleString();
         const msg: Message = {
           from,
           to: this.currentUser,
           message: String(data.message),
-          datetime: formattedDate,
+          // Keep the raw timestamp; formatting + day-grouping happen in the
+          // template via formatMessageTime()/daySeparatorLabel().
+          datetime: data.datetime ?? new Date().toISOString(),
         };
         const prev = this.chatHistory[from] ?? [];
         this.chatHistory = { ...this.chatHistory, [from]: [...prev, msg] };
@@ -224,6 +222,46 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.chatUsers.find((u) => u.username === username) ||
       this.directoryUsers.find((u) => u.username === username);
     return e?.display_name ?? username;
+  }
+
+  private toDate(dt: any): Date | null {
+    if (!dt) return null;
+    const d = new Date(dt);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  /** Short time for a message bubble, e.g. "9:42 AM". */
+  formatMessageTime(dt: any): string {
+    const d = this.toDate(dt);
+    if (!d) return String(dt ?? '');
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  /** "Today" / "Yesterday" / "May 30, 2026" for a date divider. */
+  daySeparatorLabel(dt: any): string {
+    const d = this.toDate(dt);
+    if (!d) return '';
+    const startOfDay = (x: Date) =>
+      new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diffDays = Math.round(
+      (startOfDay(new Date()) - startOfDay(d)) / 86400000
+    );
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    return d.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  /** True when the message at `index` starts a new calendar day in the thread. */
+  shouldShowDaySeparator(thread: Message[], index: number): boolean {
+    if (index <= 0) return true;
+    const cur = this.toDate(thread[index]?.datetime);
+    const prev = this.toDate(thread[index - 1]?.datetime);
+    if (!cur || !prev) return false;
+    return cur.toDateString() !== prev.toDateString();
   }
 
   isUserOnline(username: string): boolean {

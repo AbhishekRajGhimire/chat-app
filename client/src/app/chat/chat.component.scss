@@ -94,6 +94,11 @@ width: 100%;
   border-bottom: 1px solid $rojin-border;
   background: $rojin-bg-elevated;
 
+  &__avatar {
+    margin: 0 8px 0 2px;
+    flex-shrink: 0;
+  }
+
   &__title {
     margin: 0;
     font-size: 1.15rem;
@@ -164,6 +169,24 @@ width: 100%;
   .mat-mdc-list-item .mat-mdc-list-item-unscoped-content {
     padding: 0;
   }
+}
+
+.dm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dm-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-row__you {
+  opacity: 0.8;
 }
 
 // .sent-message {
@@ -341,9 +364,26 @@ width: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-family: "Montserrat", sans-serif;
+  font-family: $rojin-font-brand;
   flex: 1;
   min-height: 0;
+}
+
+.date-separator {
+  align-self: center;
+  margin: 2px 0;
+  font-family: $rojin-font-brand;
+
+  span {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: $rojin-bg-search;
+    color: $rojin-text-muted;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
 }
 
 .message-row {

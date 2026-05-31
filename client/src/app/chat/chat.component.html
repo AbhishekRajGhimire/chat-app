@@ -19,12 +19,10 @@
       @for (entry of chatUsers; track entry) {
         <mat-list-item (click)="selectUser(entry.username)"
           [ngClass]="{ active: selectedUser === entry.username }">
-          @if (entry.username === currentUser) {
-            <span>{{ entry.display_name }} (You)</span>
-          }
-          @if (entry.username !== currentUser) {
-            <span>{{ entry.display_name }}</span>
-          }
+          <span class="dm-row">
+            <app-avatar [name]="entry.display_name" [seed]="entry.username" [size]="28"></app-avatar>
+            <span class="dm-row__name">{{ entry.display_name }}@if (entry.username === currentUser) {<span class="dm-row__you"> (You)</span>}</span>
+          </span>
         </mat-list-item>
       }
     </mat-list>
@@ -72,20 +70,25 @@
           <button type="button" mat-icon-button class="chat-back" (click)="backToInbox()" aria-label="Back to inbox">
             <mat-icon>arrow_back</mat-icon>
           </button>
+          <app-avatar class="chat-header__avatar" [name]="headerTitleFor(selectedUser)" [seed]="selectedUser" [size]="34"></app-avatar>
           <h2 class="chat-header__title">{{ headerTitleFor(selectedUser) }}</h2>
           @if (isUserOnline(selectedUser)) {
             <span class="chat-header__presence">Online</span>
           }
         </div>
         <div class="chat-container" #messageScrollHost>
-          @if (!(chatHistory[selectedUser]?.length)) {
+          @let thread = chatHistory[selectedUser] || [];
+          @if (!thread.length) {
             <div class="message-thread-empty">
               Start the conversation.
             </div>
           }
-          @if (chatHistory[selectedUser]?.length) {
+          @if (thread.length) {
             <div class="message-thread">
-              @for (message of chatHistory[selectedUser] || []; track message) {
+              @for (message of thread; track message; let i = $index) {
+                @if (shouldShowDaySeparator(thread, i)) {
+                  <div class="date-separator"><span>{{ daySeparatorLabel(message.datetime) }}</span></div>
+                }
                 <div
                   class="message-row"
                   [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
@@ -94,7 +97,7 @@
                     [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
                     <div class="message-bubble__text">{{ message.message }}</div>
                     <div class="message-bubble__meta">
-                      {{ message.from }} · {{ message.datetime }}
+                      {{ message.from }} · {{ formatMessageTime(message.datetime) }}
                     </div>
                   </div>
                 </div>

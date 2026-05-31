@@ -1,0 +1,26 @@
+@import '../styles/tokens';
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-family: $rojin-font-brand;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+  user-select: none;
+}
+
+.avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar__initials {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
