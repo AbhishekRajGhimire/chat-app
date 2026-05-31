@@ -41,7 +41,7 @@ form {
     align-items: center;
 }
 
-.mat-form-field {
+mat-form-field {
     width: 100%;
     display: block;
 }
@@ -64,26 +64,13 @@ form {
     font-family: "Montserrat", sans-serif !important;
 }
 
-.mat-raised-button {
+button[mat-raised-button] {
     width: 100%;
-    height: 60px;
+    min-height: 48px;
     margin-top: 15px;
-    background-color: $rojin-primary;
-    color: $rojin-text-on-brand;
-    font-family: "Montserrat", sans-serif !important;
-}
-
-.mat-form-field-label {
-    color: white !important;
-    font-family: "Montserrat", sans-serif !important;
-}
-
-.mat-form-field.mat-focused .mat-form-field-label {
-    color: white !important;
-}
-
-.mat-form-field-underline {
-    background-color: white !important;
+    font-family: $rojin-font-brand;
+    font-weight: 600;
+    letter-spacing: 0.02em;
 }
 
 .go-to-signup-section {

@@ -145,25 +145,25 @@ width: 100%;
 //   overflow-y: scroll; /* Enable vertical scrolling */
 //   /* Additional styling for the container */
 // }
-.chat-users-list
-{
-  margin-top: 0px;
-  padding-top: 0px;
-.mat-mdc-list-item{
-  font-size: 15px;
-  text-align: start;
-  color: white;
-  font-family: 'Victor Mono', monospace;
-    height: 39px!important;
+.chat-users-list {
+  margin-top: 0;
+  padding-top: 0;
+  // MDC list rows: set a compact, consistent height via the MDC token rather
+  // than forcing `height`, which clips MDC's internal content row.
+  --mdc-list-list-item-one-line-container-height: 44px;
+
+  .mat-mdc-list-item {
+    font-size: 15px;
+    text-align: start;
+    color: $rojin-text-on-brand;
+    font-family: $rojin-font-brand;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
 
-}
-.mat-mdc-list-item .mdc-list-item__content,
-.mat-mdc-list-item .mat-mdc-list-item-unscoped-content{
-  padding: 0;
-}
-
-
+  .mat-mdc-list-item .mdc-list-item__content,
+  .mat-mdc-list-item .mat-mdc-list-item-unscoped-content {
+    padding: 0;
+  }
 }
 
 // .sent-message {
@@ -267,13 +267,21 @@ width: 100%;
   max-height: 200px;
   overflow-y: auto;
   z-index: 1;
-  .mat-mdc-list-item{
+  --mdc-list-list-item-one-line-container-height: 44px;
+
+  .mat-mdc-list-item {
     cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
   }
-  .mat-mdc-list-item:hover{
+  // MDC nests projected content in this wrapper, so lay the row out here
+  // (name on the left, @handle + Online on the right).
+  .mat-mdc-list-item .mat-mdc-list-item-unscoped-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+  .mat-mdc-list-item:hover {
     background: $rojin-overlay-search-hover;
   }
 
@@ -431,9 +439,9 @@ margin-bottom: 0px !important;
 
 /* Style the send button */
 .message-input button {
-  padding: 8px 37px;
-  border: none;
-  border-radius: 4px;
+  min-height: 44px;
+  padding: 0 24px;
+  border-radius: 8px;
   background-color: $rojin-primary;
   color: $rojin-text-on-brand;
   cursor: pointer;
