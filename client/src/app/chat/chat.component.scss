@@ -352,14 +352,128 @@ width: 100%;
 .message-thread-empty {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   text-align: center;
-  font-family: $rojin-font-brand;
-  font-size: 15px;
-  color: $rojin-text-meta;
   padding: 24px 16px;
   user-select: none;
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 6px;
+    border-radius: 50%;
+    background: $rojin-bg-search;
+    color: $rojin-primary;
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-family: $rojin-font-brand;
+    font-weight: 600;
+    font-size: 16px;
+    color: $rojin-text-body;
+  }
+
+  &__sub {
+    margin: 0;
+    max-width: 34ch;
+    font-family: $rojin-font-brand;
+    font-size: 13px;
+    line-height: 1.45;
+    color: $rojin-text-meta;
+  }
+}
+
+// Shimmer skeleton shown while the directory loads.
+.search-skeleton {
+  padding: 6px 4px;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+
+  &__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &__line {
+    flex: 1;
+    max-width: 60%;
+    height: 12px;
+    border-radius: 6px;
+  }
+
+  &__avatar,
+  &__line {
+    background: linear-gradient(
+      90deg,
+      $rojin-bg-search 25%,
+      #f6f1f8 37%,
+      $rojin-bg-search 63%
+    );
+    background-size: 400% 100%;
+    animation: rojin-shimmer 1.4s ease infinite;
+  }
+}
+
+@keyframes rojin-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+// Iconned empty states for the New Chat search.
+.search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 24px 16px;
+
+  &__icon {
+    width: 32px;
+    height: 32px;
+    font-size: 32px;
+    margin-bottom: 4px;
+    color: $rojin-border-strong;
+  }
+
+  &__title {
+    margin: 0;
+    font-family: $rojin-font-brand;
+    font-weight: 600;
+    font-size: 15px;
+    color: $rojin-text-body;
+  }
+
+  &__sub {
+    margin: 0;
+    font-family: $rojin-font-brand;
+    font-size: 13px;
+    color: $rojin-text-meta;
+  }
 }
 
 .message-thread {

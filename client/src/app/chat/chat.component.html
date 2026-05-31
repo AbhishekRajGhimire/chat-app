@@ -37,18 +37,27 @@
           </div>
           <mat-list class="search-results">
             @if (!directoryLoaded) {
-              <div class="search-results__hint">
-                Loading contacts…
+              <div class="search-skeleton" role="status" aria-label="Loading people">
+                @for (s of skeletonRows; track s) {
+                  <div class="skeleton-row">
+                    <span class="skeleton-row__avatar"></span>
+                    <span class="skeleton-row__line"></span>
+                  </div>
+                }
               </div>
             }
             @if (directoryLoaded && directoryUsers.length === 0) {
-              <div class="search-results__hint">
-                No other users registered yet.
+              <div class="search-empty">
+                <mat-icon class="search-empty__icon">group_off</mat-icon>
+                <p class="search-empty__title">No one else is here yet</p>
+                <p class="search-empty__sub">Invite a teammate to start chatting.</p>
               </div>
             }
             @if (directoryLoaded && directoryUsers.length > 0 && filteredUsers.length === 0 && searchInput.trim()) {
-              <div class="search-results__hint">
-                No user matches your search.
+              <div class="search-empty">
+                <mat-icon class="search-empty__icon">search_off</mat-icon>
+                <p class="search-empty__title">No matches</p>
+                <p class="search-empty__sub">Nobody matches “{{ searchInput.trim() }}”.</p>
               </div>
             }
             @for (entry of filteredUsers; track entry) {
@@ -80,7 +89,9 @@
           @let thread = chatHistory[selectedUser] || [];
           @if (!thread.length) {
             <div class="message-thread-empty">
-              Start the conversation.
+              <span class="message-thread-empty__badge"><mat-icon>waving_hand</mat-icon></span>
+              <p class="message-thread-empty__title">No messages yet</p>
+              <p class="message-thread-empty__sub">Say hello to {{ headerTitleFor(selectedUser) }} to start the conversation.</p>
             </div>
           }
           @if (thread.length) {

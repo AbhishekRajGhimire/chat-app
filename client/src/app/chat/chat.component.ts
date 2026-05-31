@@ -46,6 +46,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   newMessage = '';
   /** True while DM POST is in flight (prevents double send). */
   isSendingMessage = false;
+  /** Placeholder rows rendered while the directory is loading. */
+  readonly skeletonRows = [0, 1, 2, 3];
 
   /** Match `chat.component.scss` mobile breakpoint — short placeholders, no keyboard hints. */
   composerPlaceholder = 'Type a message (Enter to send, Shift+Enter for new line)';
