@@ -20,7 +20,9 @@ $rojin-border: #d8d0dc;
 $rojin-border-strong: #c4b8c8;
 $rojin-text-body: #2b0a2c;
 $rojin-text-muted: #5c5260;
-$rojin-text-meta: #7a6f7e;
+// AA-tuned: passes 4.5:1 on the thread (#f3f0f5) and search (#ebe6ef) surfaces
+// where timestamps / empty-state text live (was #7a6f7e, which failed at 4.2/3.9).
+$rojin-text-meta: #645b68;
 $rojin-online: #1b5e20;
 $rojin-online-soft: #e8f5e9;
 
