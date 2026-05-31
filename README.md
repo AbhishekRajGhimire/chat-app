@@ -63,7 +63,7 @@ client/
 #### Prerequisites
 
 - **Python 3.10+**
-- **Node.js** (Angular 13 works best with Node 14/16)
+- **Node.js 20+** (required by Angular 21)
 
 #### 1) Run the backend
 

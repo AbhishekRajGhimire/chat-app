@@ -16,7 +16,7 @@ For pure non-runtime edits (docs, comments, `.gitignore`, README), this rule doe
 
 ## Stack at a glance
 
-Real-time chat: **Angular 13 SPA** (`client/`) talking to a **Flask + Flask-SocketIO** backend (`backend/`) over **SQLite**. Dev runs as two processes; the Angular dev server proxies `/api` and `/socket.io` to Flask on the same host.
+Real-time chat: **Angular 21 SPA** (`client/`) talking to a **Flask + Flask-SocketIO** backend (`backend/`) over **SQLite**. Dev runs as two processes; the Angular dev server proxies `/api` and `/socket.io` to Flask on the same host.
 
 ## Commands
 
@@ -79,8 +79,10 @@ If the peer is offline, the socket emit reaches an empty room — only the HTTP 
 - `ui/styles/_tokens.scss` is the **single source of truth** for brand colors, breakpoints, toolbar/sidebar sizing, and viewport mixins. Feature SCSS and `client/src/styles.scss` `@use` it — never hard-code hex values or breakpoint widths in feature components.
 - Mobile/notch handling uses `100dvh` / `-webkit-fill-available` and `env(safe-area-inset-*)`. `index.html` sets `viewport-fit=cover` for this to take effect.
 
-### Angular version pinning
-`@angular/*` is pinned to `~13.0.0-next.0` (a prerelease tag). Be conservative about upgrades — anything past Angular 13 will require Node 16+ and broad refactors (standalone components, etc.).
+### Angular version
+`@angular/*` is on stable **21.2.x** (upgraded from a 13.0.0 prerelease via stepwise `ng update`). Material uses the **MDC** components with **M3** token theming — `mat.define-theme` in `client/src/styles.scss`, with the brand palette in `client/src/app/ui/styles/_m3-theme.scss` (generated from the seed `#4a154b`). The app still uses **NgModules** (no standalone migration) and the webpack `@angular-devkit/build-angular:browser` builder (esbuild/`application` builder intentionally not adopted). Upgrade one major at a time via `ng update`.
+
+Known follow-ups left from the upgrade: the unit test suite is pre-existing broken (unmaintained scaffold specs missing test providers); component SCSS still uses Sass `@import` (Dart Sass deprecates it in favor of `@use`); and the M3 theme is color-only (no amber accent / typography / density yet) — all slated for the visual-refresh phase.
 
 ## Where to read next
 
