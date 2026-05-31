@@ -91,14 +91,17 @@
                 }
                 <div
                   class="message-row"
+                  [class.message-row--group-start]="!isContinuation(thread, i)"
                   [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
                   <div
                     class="message-bubble"
                     [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
                     <div class="message-bubble__text">{{ message.message }}</div>
-                    <div class="message-bubble__meta">
-                      {{ message.from }} · {{ formatMessageTime(message.datetime) }}
-                    </div>
+                    @if (isGroupEnd(thread, i)) {
+                      <div class="message-bubble__meta">
+                        {{ message.from }} · {{ formatMessageTime(message.datetime) }}
+                      </div>
+                    }
                   </div>
                 </div>
               }

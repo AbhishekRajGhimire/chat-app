@@ -363,7 +363,7 @@ width: 100%;
 .message-thread {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px; // tight by default; group starts add the larger gap below
   font-family: $rojin-font-brand;
   flex: 1;
   min-height: 0;
@@ -371,7 +371,7 @@ width: 100%;
 
 .date-separator {
   align-self: center;
-  margin: 2px 0;
+  margin: 10px 0 6px;
   font-family: $rojin-font-brand;
 
   span {
@@ -396,6 +396,12 @@ width: 100%;
 
   &--sent {
     justify-content: flex-end;
+  }
+
+  // First message of a sender's group gets the larger inter-group gap;
+  // continuation messages stay tight (the 2px thread gap).
+  &--group-start:not(:first-child) {
+    margin-top: 12px;
   }
 }
 

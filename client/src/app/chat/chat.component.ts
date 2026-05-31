@@ -264,6 +264,33 @@ export class ChatComponent implements OnInit, OnDestroy {
     return cur.toDateString() !== prev.toDateString();
   }
 
+  /** How far apart two timestamps are, in ms (Infinity if either is unparseable). */
+  private gapMs(a: any, b: any): number {
+    const da = this.toDate(a);
+    const db = this.toDate(b);
+    if (!da || !db) return Infinity;
+    return Math.abs(da.getTime() - db.getTime());
+  }
+
+  /** Window within which same-sender messages collapse into one group. */
+  private static readonly GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+  /** True when this message continues the previous one's group (same sender, same day, within the window). */
+  isContinuation(thread: Message[], index: number): boolean {
+    if (index <= 0) return false;
+    const cur = thread[index];
+    const prev = thread[index - 1];
+    if (!cur || !prev || cur.from !== prev.from) return false;
+    if (this.shouldShowDaySeparator(thread, index)) return false;
+    return this.gapMs(cur.datetime, prev.datetime) <= ChatComponent.GROUP_WINDOW_MS;
+  }
+
+  /** True when this message is the last of its group — only then do we show the timestamp. */
+  isGroupEnd(thread: Message[], index: number): boolean {
+    if (index >= thread.length - 1) return true;
+    return !this.isContinuation(thread, index + 1);
+  }
+
   isUserOnline(username: string): boolean {
     return this.onlineUsers.some((u: any[]) => u[0] === username && u[1]);
   }
