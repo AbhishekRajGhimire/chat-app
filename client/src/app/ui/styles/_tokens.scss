@@ -56,8 +56,13 @@ $rojin-tap-min: 48px;
   max-height: calc(100dvh - #{$rojin-toolbar-height});
 }
 
-/// Full viewport fill for root / host (fallback then dynamic vh).
+/// Full viewport fill for root / host. Order matters: `100dvh` is declared LAST
+/// so it governs on modern browsers (it's viewport-relative and does NOT depend
+/// on an ancestor having a defined height). `-webkit-fill-available` is only a
+/// fallback for older iOS Safari — if it wins, it collapses when the parent has
+/// no explicit height.
 @mixin rojin-viewport-min-height {
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   min-height: 100dvh;
 }
