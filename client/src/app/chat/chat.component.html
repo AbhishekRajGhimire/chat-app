@@ -1,101 +1,126 @@
 <app-toolbar-shell class="chat-toolbar">
-    <app-brand-lockup uiToolbarBrand [showTagline]="!compactToolbar"></app-brand-lockup>
-    <ng-container uiToolbarActions>
-      <span class="chat-toolbar__user">Welcome, {{ toolbarLabel }}</span>
-      <a mat-stroked-button color="accent" class="chat-toolbar__profile" routerLink="/profile">Profile</a>
-      <button mat-raised-button color="warn" class="chat-toolbar__logout" type="button" (click)="logout()">
-        Logout
-      </button>
-    </ng-container>
-  </app-toolbar-shell>
-  
-  <div class="chats-section" [class.chat-detail-active]="!!selectedUser">
-    <div class="chats-sidebar">
-        <button mat-raised-button color="primary" class="click-search-button" (click)="showSearch()">
-            New Chat
-        </button>
-        <h4 style="margin: 10px">Direct Messages</h4>
-        <mat-list class="chat-users-list">
-            <mat-list-item *ngFor="let entry of chatUsers" (click)="selectUser(entry.username)"
-                [ngClass]="{ active: selectedUser === entry.username }">
-                <span *ngIf="entry.username === currentUser">{{ entry.display_name }} (You)</span>
-                <span *ngIf="entry.username !== currentUser">{{ entry.display_name }}</span>
-            </mat-list-item>
-        </mat-list>
-    </div>
-  
-    <div class="chat-and-search-panel">
-        <ng-container *ngIf="!selectedUser">
-            <div class="search-bar-container">
-                <div class="search-bar">
-                    <input matInput class="user-search" [placeholder]="searchPlaceholder"
-                        [(ngModel)]="searchInput" (input)="filterUsers()" />
+  <app-brand-lockup uiToolbarBrand [showTagline]="!compactToolbar"></app-brand-lockup>
+  <ng-container uiToolbarActions>
+    <span class="chat-toolbar__user">Welcome, {{ toolbarLabel }}</span>
+    <a mat-stroked-button color="accent" class="chat-toolbar__profile" routerLink="/profile">Profile</a>
+    <button mat-raised-button color="warn" class="chat-toolbar__logout" type="button" (click)="logout()">
+      Logout
+    </button>
+  </ng-container>
+</app-toolbar-shell>
+
+<div class="chats-section" [class.chat-detail-active]="!!selectedUser">
+  <div class="chats-sidebar">
+    <button mat-raised-button color="primary" class="click-search-button" (click)="showSearch()">
+      New Chat
+    </button>
+    <h4 style="margin: 10px">Direct Messages</h4>
+    <mat-list class="chat-users-list">
+      @for (entry of chatUsers; track entry) {
+        <mat-list-item (click)="selectUser(entry.username)"
+          [ngClass]="{ active: selectedUser === entry.username }">
+          @if (entry.username === currentUser) {
+            <span>{{ entry.display_name }} (You)</span>
+          }
+          @if (entry.username !== currentUser) {
+            <span>{{ entry.display_name }}</span>
+          }
+        </mat-list-item>
+      }
+    </mat-list>
+  </div>
+
+  <div class="chat-and-search-panel">
+    @if (!selectedUser) {
+      <div class="search-bar-container">
+        <div class="search-bar">
+          <input matInput class="user-search" [placeholder]="searchPlaceholder"
+            [(ngModel)]="searchInput" (input)="filterUsers()" />
+          </div>
+          <mat-list class="search-results">
+            @if (!directoryLoaded) {
+              <div class="search-results__hint">
+                Loading contacts…
+              </div>
+            }
+            @if (directoryLoaded && directoryUsers.length === 0) {
+              <div class="search-results__hint">
+                No other users registered yet.
+              </div>
+            }
+            @if (directoryLoaded && directoryUsers.length > 0 && filteredUsers.length === 0 && searchInput.trim()) {
+              <div class="search-results__hint">
+                No user matches your search.
+              </div>
+            }
+            @for (entry of filteredUsers; track entry) {
+              <mat-list-item (click)="selectUser(entry.username)">
+                <span class="search-result-name">{{ entry.display_name }}</span>
+                @if (entry.display_name !== entry.username) {
+                  <span class="search-result-username">&#64;{{ entry.username }}</span>
+                }
+                @if (isUserOnline(entry.username)) {
+                  <span class="search-result-online">Online</span>
+                }
+              </mat-list-item>
+            }
+          </mat-list>
+        </div>
+      }
+      @if (selectedUser) {
+        <div class="chat-header">
+          <button type="button" mat-icon-button class="chat-back" (click)="backToInbox()" aria-label="Back to inbox">
+            <mat-icon>arrow_back</mat-icon>
+          </button>
+          <h2 class="chat-header__title">{{ headerTitleFor(selectedUser) }}</h2>
+          @if (isUserOnline(selectedUser)) {
+            <span class="chat-header__presence">Online</span>
+          }
+        </div>
+        <div class="chat-container" #messageScrollHost>
+          @if (!(chatHistory[selectedUser]?.length)) {
+            <div class="message-thread-empty">
+              Start the conversation.
+            </div>
+          }
+          @if (chatHistory[selectedUser]?.length) {
+            <div class="message-thread">
+              @for (message of chatHistory[selectedUser] || []; track message) {
+                <div
+                  class="message-row"
+                  [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
+                  <div
+                    class="message-bubble"
+                    [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
+                    <div class="message-bubble__text">{{ message.message }}</div>
+                    <div class="message-bubble__meta">
+                      {{ message.from }} · {{ message.datetime }}
+                    </div>
+                  </div>
                 </div>
-                <mat-list class="search-results">
-                    <div *ngIf="!directoryLoaded" class="search-results__hint">
-                        Loading contacts…
-                    </div>
-                    <div *ngIf="directoryLoaded && directoryUsers.length === 0" class="search-results__hint">
-                        No other users registered yet.
-                    </div>
-                    <div *ngIf="directoryLoaded && directoryUsers.length > 0 && filteredUsers.length === 0 && searchInput.trim()" class="search-results__hint">
-                        No user matches your search.
-                    </div>
-                    <mat-list-item *ngFor="let entry of filteredUsers" (click)="selectUser(entry.username)">
-                        <span class="search-result-name">{{ entry.display_name }}</span>
-                        <span class="search-result-username" *ngIf="entry.display_name !== entry.username">&#64;{{ entry.username }}</span>
-                        <span *ngIf="isUserOnline(entry.username)" class="search-result-online">Online</span>
-                    </mat-list-item>
-                </mat-list>
+              }
             </div>
-        </ng-container>
-        <ng-container *ngIf="selectedUser">
-            <div class="chat-header">
-                <button type="button" mat-icon-button class="chat-back" (click)="backToInbox()" aria-label="Back to inbox">
-                    <mat-icon>arrow_back</mat-icon>
-                </button>
-                <h2 class="chat-header__title">{{ headerTitleFor(selectedUser) }}</h2>
-                <span *ngIf="isUserOnline(selectedUser)" class="chat-header__presence">Online</span>
-            </div>
-            <div class="chat-container" #messageScrollHost>
-                <div *ngIf="!(chatHistory[selectedUser]?.length)" class="message-thread-empty">
-                    Start the conversation.
-                </div>
-                <div class="message-thread" *ngIf="chatHistory[selectedUser]?.length">
-                    <div
-                        *ngFor="let message of chatHistory[selectedUser] || []"
-                        class="message-row"
-                        [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
-                        <div
-                            class="message-bubble"
-                            [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
-                            <div class="message-bubble__text">{{ message.message }}</div>
-                            <div class="message-bubble__meta">
-                                {{ message.from }} · {{ message.datetime }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="message-input">
-                <textarea
-                    matInput
-                    class="message-input__field"
-                    [(ngModel)]="newMessage"
-                    [placeholder]="composerPlaceholder"
-                    rows="1"
-                    [disabled]="isSendingMessage"
-                    (keydown)="onComposerKeydown($event)"
-                ></textarea>
-                <button
-                    mat-raised-button
-                    color="primary"
-                    type="button"
-                    [disabled]="isSendingMessage || !newMessage.trim()"
-                    (click)="sendMessage()">
-                    {{ isSendingMessage ? 'Sending…' : 'Send' }}
-                </button>
-            </div>
-        </ng-container>
+          }
+        </div>
+        <div class="message-input">
+          <textarea
+            matInput
+            class="message-input__field"
+            [(ngModel)]="newMessage"
+            [placeholder]="composerPlaceholder"
+            rows="1"
+            [disabled]="isSendingMessage"
+            (keydown)="onComposerKeydown($event)"
+          ></textarea>
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            [disabled]="isSendingMessage || !newMessage.trim()"
+            (click)="sendMessage()">
+            {{ isSendingMessage ? 'Sending…' : 'Send' }}
+          </button>
+        </div>
+      }
     </div>
   </div>
