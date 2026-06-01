@@ -16,12 +16,25 @@
     </button>
     <h4 class="sidebar-heading">Direct messages</h4>
     <mat-list class="chat-users-list">
-      @for (entry of chatUsers; track entry) {
+      @for (entry of sortedChatUsers; track entry.username) {
         <mat-list-item (click)="selectUser(entry.username)"
           [ngClass]="{ active: selectedUser === entry.username }">
-          <span class="dm-row">
-            <app-avatar [name]="entry.display_name" [seed]="entry.username" [size]="28"></app-avatar>
-            <span class="dm-row__name">{{ entry.display_name }}@if (entry.username === currentUser) {<span class="dm-row__you"> (You)</span>}</span>
+          <span class="dm-row" [class.is-unread]="(entry.unreadCount || 0) > 0">
+            <app-avatar [name]="entry.display_name" [seed]="entry.username" [size]="34"></app-avatar>
+            <span class="dm-row__body">
+              <span class="dm-row__name">{{ entry.display_name }}@if (entry.username === currentUser) {<span class="dm-row__you"> (You)</span>}</span>
+              @if (entry.last_message) {
+                <span class="dm-row__preview">{{ entry.last_message }}</span>
+              }
+            </span>
+            <span class="dm-row__meta">
+              @if (entry.last_message_at) {
+                <span class="dm-row__time">{{ listTime(entry.last_message_at) }}</span>
+              }
+              @if ((entry.unreadCount || 0) > 0) {
+                <span class="dm-row__badge">{{ entry.unreadCount }}</span>
+              }
+            </span>
           </span>
         </mat-list-item>
       }
@@ -106,9 +119,14 @@
                   [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
                   <div
                     class="message-bubble"
+                    [class.message-bubble--failed]="message.status === 'failed'"
                     [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
                     <div class="message-bubble__text">{{ message.message }}</div>
-                    @if (isGroupEnd(thread, i)) {
+                    @if (message.from === currentUser && message.status === 'failed') {
+                      <button type="button" class="message-failed" (click)="retryMessage(selectedUser, message)">
+                        ⚠ Couldn't send · <span class="message-failed__retry">↻ Retry</span>
+                      </button>
+                    } @else if (isGroupEnd(thread, i)) {
                       <div class="message-bubble__meta">
                         {{ message.from }} · {{ formatMessageTime(message.datetime) }}
                       </div>
@@ -116,6 +134,11 @@
                   </div>
                 </div>
               }
+            </div>
+          }
+          @if (isPeerTyping) {
+            <div class="typing-bubble" aria-label="typing">
+              <span></span><span></span><span></span>
             </div>
           }
         </div>
@@ -127,6 +150,7 @@
             [placeholder]="composerPlaceholder"
             rows="1"
             [disabled]="isSendingMessage"
+            (input)="notifyTyping()"
             (keydown)="onComposerKeydown($event)"
           ></textarea>
           <button

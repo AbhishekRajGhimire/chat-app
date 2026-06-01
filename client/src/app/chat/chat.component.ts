@@ -18,6 +18,7 @@ interface Message {
   to: string;
   message: string;
   datetime: any;
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 @Component({
@@ -48,6 +49,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   isSendingMessage = false;
   /** Placeholder rows rendered while the directory is loading. */
   readonly skeletonRows = [0, 1, 2, 3];
+
+  /** Username currently typing to us in the open conversation (null = nobody). */
+  typingFrom: string | null = null;
+  private typingClearTimer: any = null;
+  private lastTypingEmit = 0;
+
+  private static readonly BASE_TITLE = 'Rojin : the org chat';
 
   /** Match `chat.component.scss` mobile breakpoint — short placeholders, no keyboard hints. */
   composerPlaceholder = 'Type a message (Enter to send, Shift+Enter for new line)';
@@ -81,7 +89,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     });
     this.http.get<DirectoryUser[]>('/api/chats_history', { headers }).subscribe(
       (data: DirectoryUser[]) => {
-        this.chatUsers = data ?? [];
+        this.chatUsers = (data ?? []).map((e) => ({ ...e, unreadCount: 0 }));
       },
       (error) => {
         if (error.status === 401 || error.status === 422) {
@@ -137,9 +145,50 @@ export class ChatComponent implements OnInit, OnDestroy {
         };
         const prev = this.chatHistory[from] ?? [];
         this.chatHistory = { ...this.chatHistory, [from]: [...prev, msg] };
-        if (from === this.selectedUser) {
-          this.scrollThreadToBottom();
+
+        // A message from this peer means they've stopped "typing".
+        if (from === this.typingFrom) {
+          this.typingFrom = null;
         }
+
+        // Find the sidebar entry, or create it live (new conversation).
+        let entry = this.chatUsers.find((e) => e.username === from);
+        if (!entry) {
+          const dir = this.directoryUsers.find((e) => e.username === from);
+          entry = {
+            username: from,
+            display_name: dir?.display_name ?? from,
+            unreadCount: 0,
+          };
+          this.chatUsers = [...this.chatUsers, entry];
+        }
+        entry.last_message = msg.message;
+        entry.last_message_at = msg.datetime;
+
+        const isOpen = from === this.selectedUser && !document.hidden;
+        if (isOpen) {
+          this.scrollThreadToBottom();
+        } else {
+          entry.unreadCount = (entry.unreadCount || 0) + 1;
+        }
+        this.refreshTabTitle();
+      });
+    });
+
+    this.socket.on('peer_typing', (data: any) => {
+      this.zone.run(() => {
+        const from = data?.from ? String(data.from) : '';
+        if (!from || from !== this.selectedUser) {
+          return;
+        }
+        this.typingFrom = from;
+        if (this.typingClearTimer) {
+          clearTimeout(this.typingClearTimer);
+        }
+        this.typingClearTimer = setTimeout(
+          () => this.zone.run(() => (this.typingFrom = null)),
+          3000
+        );
       });
     });
 
@@ -181,6 +230,10 @@ export class ChatComponent implements OnInit, OnDestroy {
         this.mediaQuery.removeListener(this.mqHandler as any);
       }
     }
+    if (this.typingClearTimer) {
+      clearTimeout(this.typingClearTimer);
+    }
+    document.title = ChatComponent.BASE_TITLE;
     if (this.socket) {
       this.socket.disconnect();
     }
@@ -297,6 +350,50 @@ export class ChatComponent implements OnInit, OnDestroy {
     return this.onlineUsers.some((u: any[]) => u[0] === username && u[1]);
   }
 
+  /** Conversation list, most-recent-first. Null timestamps and self sort last. */
+  get sortedChatUsers(): DirectoryUser[] {
+    const ts = (e: DirectoryUser) =>
+      e.username === this.currentUser
+        ? -Infinity
+        : e.last_message_at
+        ? new Date(e.last_message_at).getTime()
+        : 0;
+    return [...this.chatUsers].sort((a, b) => ts(b) - ts(a));
+  }
+
+  /** Compact time for a DM row: "9:43", "Tue", or "May 30". */
+  listTime(iso: any): string {
+    const d = this.toDate(iso);
+    if (!d) return '';
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    const diffDays = Math.round((now.getTime() - d.getTime()) / 86400000);
+    if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short' });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  /** Sum of unread counts → browser tab title badge. */
+  private refreshTabTitle(): void {
+    const total = this.chatUsers.reduce((n, e) => n + (e.unreadCount || 0), 0);
+    document.title = total > 0 ? `(${total}) Rojin` : ChatComponent.BASE_TITLE;
+  }
+
+  /** True when the open peer is currently typing to us. */
+  get isPeerTyping(): boolean {
+    return !!this.typingFrom && this.typingFrom === this.selectedUser;
+  }
+
+  /** Tell the open peer we're typing — throttled to at most once per 2s. */
+  notifyTyping(): void {
+    if (!this.selectedUser) return;
+    const now = Date.now();
+    if (now - this.lastTypingEmit < 2000) return;
+    this.lastTypingEmit = now;
+    this.socket.emit('typing', { recipient: this.selectedUser });
+  }
+
   /** Scroll the open conversation panel to the latest message (after DOM update). */
   private scrollThreadToBottom(): void {
     setTimeout(() => {
@@ -324,6 +421,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   selectUser(username: string): void {
     this.selectedUser = username;
     this.searchInput = '';
+    this.typingFrom = null;
+    const opened = this.chatUsers.find((e) => e.username === username);
+    if (opened) {
+      opened.unreadCount = 0;
+    }
+    this.refreshTabTitle();
     this.applyNewChatFilter();
     const headers = new HttpHeaders().set(
       'Authorization',
@@ -366,30 +469,35 @@ export class ChatComponent implements OnInit, OnDestroy {
     const text = this.newMessage;
     const peer = this.selectedUser;
 
-    this.socket.emit('send_message', {
-      recipient: peer,
-      message: text,
-    });
-
-    const today = new Date();
-    const formattedDatetime = today.toISOString();
-
     const msg: Message = {
       from: this.currentUser,
       to: peer,
       message: text,
-      datetime: formattedDatetime,
+      datetime: new Date().toISOString(),
+      status: 'sending',
     };
     const threadBefore = this.chatHistory[peer] ?? [];
     this.chatHistory = {
       ...this.chatHistory,
       [peer]: [...threadBefore, msg],
     };
+    // Reflect the new message in the sidebar (preview + recency reorder).
+    const entry = this.chatUsers.find((e) => e.username === peer);
+    if (entry) {
+      entry.last_message = text;
+      entry.last_message_at = msg.datetime;
+    }
     this.scrollThreadToBottom();
-
-    this.isSendingMessage = true;
     this.newMessage = '';
 
+    this.postMessage(peer, text, msg);
+  }
+
+  /** Emit + POST a message, flipping its status on the result. Shared by send and retry. */
+  private postMessage(peer: string, text: string, msg: Message): void {
+    this.socket.emit('send_message', { recipient: peer, message: text });
+
+    this.isSendingMessage = true;
     const headers = new HttpHeaders().set(
       'Authorization',
       'Bearer ' + localStorage.getItem('access_token')
@@ -403,33 +511,35 @@ export class ChatComponent implements OnInit, OnDestroy {
       .pipe(finalize(() => (this.isSendingMessage = false)))
       .subscribe({
         next: () => {
+          msg.status = 'sent';
           if (!this.chatUsers.some((e) => e.username === peer)) {
             const fromDir = this.directoryUsers.find((e) => e.username === peer);
-            const entry: DirectoryUser = fromDir ?? {
+            const newEntry: DirectoryUser = fromDir ?? {
               username: peer,
               display_name: peer,
             };
-            this.chatUsers = [...this.chatUsers, entry];
+            newEntry.last_message = text;
+            newEntry.last_message_at = msg.datetime;
+            newEntry.unreadCount = 0;
+            this.chatUsers = [...this.chatUsers, newEntry];
           }
         },
         error: (err) => {
-          const thread = this.chatHistory[peer];
-          const last = thread?.length ? thread[thread.length - 1] : null;
-          if (
-            last &&
-            last.from === msg.from &&
-            last.to === msg.to &&
-            last.message === msg.message
-          ) {
-            this.chatHistory = {
-              ...this.chatHistory,
-              [peer]: thread!.slice(0, -1),
-            };
-          }
+          // Never silently drop the message — leave it visible and retryable.
+          msg.status = 'failed';
           if (err.status === 401 || err.status === 422) {
             this.router.navigate(['/signin']);
           }
         },
       });
+  }
+
+  /** Re-send a message that previously failed. */
+  retryMessage(peer: string, msg: Message): void {
+    if (!peer || msg.status === 'sending') {
+      return;
+    }
+    msg.status = 'sending';
+    this.postMessage(peer, msg.message, msg);
   }
 }

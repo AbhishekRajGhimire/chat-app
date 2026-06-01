@@ -13,6 +13,9 @@ export interface UserProfile {
 export interface DirectoryUser {
   username: string;
   display_name: string;
+  last_message?: string | null;
+  last_message_at?: string | null;
+  unreadCount?: number;
 }
 
 @Injectable({
