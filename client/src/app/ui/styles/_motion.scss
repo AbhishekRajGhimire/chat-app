@@ -1,0 +1,37 @@
+// ---------------------------------------------------------------------------
+// Aubergine Atelier — shared motion. Keyframe names are global; reference them
+// from feature SCSS. Every consumer applies animation ONLY through the
+// `rojin-animate` mixin (or its own prefers-reduced-motion guard) so the whole
+// system goes still for users who ask for reduced motion.
+// ---------------------------------------------------------------------------
+
+@keyframes rojin-fade-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rojin-pop-in {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// Gold-leaf hairline drawing itself in (auth hero accent).
+@keyframes rojin-hairline-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+// Expressive send: the button gives a small upward "post" kick.
+@keyframes rojin-send-flight {
+  0%   { transform: translateY(0) scale(1); }
+  45%  { transform: translateY(-3px) scale(0.97); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/// Apply an animation only when the user hasn't requested reduced motion.
+/// Usage: @include rojin-animate(rojin-fade-rise, $rojin-dur-base, $rojin-ease, 80ms);
+@mixin rojin-animate($name, $dur, $ease, $delay: 0ms, $fill: both) {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: $name $dur $ease $delay $fill;
+  }
+}

@@ -1,53 +1,80 @@
 // ---------------------------------------------------------------------------
-// Rojin shared design tokens — import from feature SCSS via:
-//   @import '../ui/styles/tokens';
-// or add "stylePreprocessorOptions.includePaths" and @import 'tokens';
+// Rojin shared design tokens — "Aubergine Atelier" visual system.
+// Import from feature SCSS via:  @import '../ui/styles/tokens';
+// Single source of truth for color, type, shape, motion. Never hard-code these.
 // ---------------------------------------------------------------------------
 
-// Brand (keep in sync with Material primary map default hue 800 / 900 in styles.scss)
+// === Core palette ==========================================================
+$rojin-ink:          #3a0e3c; // primary text — deep aubergine
+$rojin-ink-soft:     #6b4a6d; // muted text / previews
+$rojin-primary:      #4a154b; // brand plum — chrome, sent bubbles, primary CTA
 $rojin-primary-dark: #2b0a2c;
-$rojin-primary: #4a154b;
 $rojin-primary-soft: #6b3a6d;
-$rojin-text-on-brand: #fff;
-$rojin-accent-outline: rgba(255, 255, 255, 0.55);
 
-// Surfaces — slight violet warmth so the UI matches the purple chrome
-$rojin-bg-app: #fbfafc;
-$rojin-bg-thread: #f3f0f5;
-$rojin-bg-elevated: #fff;
-$rojin-bg-search: #ebe6ef;
-$rojin-border: #d8d0dc;
-$rojin-border-strong: #c4b8c8;
-$rojin-text-body: #2b0a2c;
-$rojin-text-muted: #5c5260;
-// AA-tuned: passes 4.5:1 on the thread (#f3f0f5) and search (#ebe6ef) surfaces
-// where timestamps / empty-state text live (was #7a6f7e, which failed at 4.2/3.9).
-$rojin-text-meta: #645b68;
-$rojin-online: #1b5e20;
-$rojin-online-soft: #e8f5e9;
+$rojin-canvas:    #f7f2e8; // ivory paper — app background
+$rojin-paper:     #fffdf8; // elevated surfaces — cards, received bubbles, fields
+$rojin-gold:      #b08d57; // gold-leaf accent
+$rojin-gold-soft: rgba(176, 141, 87, 0.38);
+$rojin-line:      rgba(176, 141, 87, 0.32); // hairline borders
 
-// Sidebar / list interaction (on $rojin-primary)
-$rojin-overlay-hover: rgba(255, 255, 255, 0.12);
-$rojin-overlay-active: rgba(255, 255, 255, 0.2);
-$rojin-overlay-search-hover: rgba(74, 21, 75, 0.08);
+$rojin-text-on-brand:  #f7f2e8; // ivory on plum
+$rojin-accent-outline: rgba(247, 242, 232, 0.55);
+
+$rojin-online:      #3f5a3a; // muted forest presence
+$rojin-online-soft: rgba(63, 90, 58, 0.10);
+
+// === Legacy aliases (keep existing consumers compiling) ====================
+$rojin-bg-app:      $rojin-canvas;
+$rojin-bg-thread:   $rojin-canvas;
+$rojin-bg-elevated: $rojin-paper;
+$rojin-bg-search:   #efe7d9;
+$rojin-border:        $rojin-line;
+$rojin-border-strong: rgba(176, 141, 87, 0.5);
+$rojin-text-body:  $rojin-ink;
+$rojin-text-muted: $rojin-ink-soft;
+// AA-tuned: ≥4.5:1 on canvas (#f7f2e8) and paper (#fffdf8). Verified in Task 9.
+$rojin-text-meta:  #5c4a5e;
+
+// Sidebar / list interaction overlays
+$rojin-overlay-hover:        rgba(58, 14, 60, 0.045);
+$rojin-overlay-active:       rgba(58, 14, 60, 0.07);
+$rojin-overlay-search-hover: rgba(74, 21, 75, 0.07);
 
 // Message chrome
-$rojin-bubble-received-border: rgba(74, 21, 75, 0.22);
-$rojin-bubble-received-shadow: rgba(43, 10, 44, 0.07);
-$rojin-bubble-sent-shadow: rgba(43, 10, 44, 0.18);
+$rojin-bubble-received-border: $rojin-gold-soft;
+$rojin-bubble-received-shadow: rgba(43, 10, 44, 0.06);
+$rojin-bubble-sent-shadow:     rgba(43, 10, 44, 0.18);
 
 // Focus / links
-$rojin-focus-ring: rgba(74, 21, 75, 0.35);
-$rojin-link: #5c2760;
+$rojin-focus-ring: rgba(176, 141, 87, 0.45); // gold bloom
+$rojin-link:       #5c2760;
 
-// Layout
+// === Typography ============================================================
+$rojin-font-display: "Libre Baskerville", Georgia, serif; // brand, names, headings
+$rojin-font-accent:  "Fraunces", Georgia, serif;          // italic taglines, date sep, eyebrows
+$rojin-font-body:    "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+$rojin-font-brand:   $rojin-font-display;
+
+// === Shape / elevation =====================================================
+$rojin-radius-sm: 11px;
+$rojin-radius-md: 14px;
+$rojin-radius-lg: 18px;
+$rojin-shadow-card: 0 18px 50px rgba(43, 10, 44, 0.10);
+
+// === Motion ================================================================
+$rojin-dur-fast: 150ms;
+$rojin-dur-base: 240ms;
+$rojin-dur-slow: 520ms;
+$rojin-ease:          cubic-bezier(0.22, 0.61, 0.36, 1);  // gentle ease-out
+$rojin-ease-emphasis: cubic-bezier(0.34, 1.36, 0.64, 1);  // slight overshoot
+
+// === Layout ================================================================
 $rojin-breakpoint-mobile: 768px;
-$rojin-toolbar-height: 50px;
-$rojin-sidebar-width: 200px;
-$rojin-font-brand: "Montserrat", sans-serif;
+$rojin-toolbar-height: 56px;
+$rojin-sidebar-width: 212px;
 $rojin-tap-min: 48px;
 
-/// Stack below a single Material toolbar row (mobile browser chrome aware).
+/// Stack below a single toolbar row (mobile browser chrome aware).
 @mixin rojin-main-below-toolbar {
   height: calc(100vh - #{$rojin-toolbar-height});
   height: calc(100dvh - #{$rojin-toolbar-height});
@@ -56,11 +83,8 @@ $rojin-tap-min: 48px;
   max-height: calc(100dvh - #{$rojin-toolbar-height});
 }
 
-/// Full viewport fill for root / host. Order matters: `100dvh` is declared LAST
-/// so it governs on modern browsers (it's viewport-relative and does NOT depend
-/// on an ancestor having a defined height). `-webkit-fill-available` is only a
-/// fallback for older iOS Safari — if it wins, it collapses when the parent has
-/// no explicit height.
+/// Full viewport fill for root / host. `100dvh` declared LAST so it governs on
+/// modern browsers; `-webkit-fill-available` is only an older-iOS fallback.
 @mixin rojin-viewport-min-height {
   min-height: 100vh;
   min-height: -webkit-fill-available;

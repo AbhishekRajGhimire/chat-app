@@ -1,6 +1,7 @@
-/* Angular Material — Rojin brand theme (M3 token system, seed #4a154b). */
+/* Angular Material — Rojin "Aubergine Atelier" theme (M3 token system, seed #4a154b). */
 @use '@angular/material' as mat;
 @use './app/ui/styles/m3-theme' as rojin;
+@use './app/ui/styles/motion';
 
 @include mat.elevation-classes();
 @include mat.app-background();
@@ -11,6 +12,10 @@ $rojin-theme: mat.define-theme(
       theme-type: light,
       primary: rojin.$primary-palette,
       tertiary: rojin.$tertiary-palette,
+    ),
+    typography: (
+      brand-family: 'Libre Baskerville',
+      plain-family: 'Hanken Grotesk',
     ),
   )
 );
@@ -24,6 +29,10 @@ html {
 
 @import './app/ui/styles/tokens';
 
+* {
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
 body {
   margin: 0;
   min-height: 100%;
@@ -31,6 +40,44 @@ body {
   min-height: 100dvh;
   /* iOS legacy full-height */
   min-height: -webkit-fill-available;
-  background-color: $rojin-bg-app;
+  font-family: $rojin-font-body;
   color: $rojin-text-body;
+  background-color: $rojin-canvas;
+  /* Subtle paper grain so the ivory canvas reads as stock, not flat fill. */
+  background-image: radial-gradient(rgba(58, 14, 60, 0.035) 1px, transparent 1px);
+  background-size: 4px 4px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Editorial selection + focus polish */
+::selection {
+  background: rgba(74, 21, 75, 0.18);
+  color: $rojin-ink;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px $rojin-focus-ring;
+  border-radius: 4px;
+}
+
+/* Thin gold-leaf scrollbars on the ivory canvas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: $rojin-gold-soft transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: $rojin-gold-soft;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(176, 141, 87, 0.6);
+  background-clip: content-box;
 }
