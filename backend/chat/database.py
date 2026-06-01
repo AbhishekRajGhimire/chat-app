@@ -1,8 +1,12 @@
+import os
 import sqlite3
 
 # NOTE: For local testing we keep a single connection (check_same_thread=False)
-# so Flask + SocketIO handlers can share it.
-connection = sqlite3.connect("chat.db", check_same_thread=False)
+# so Flask + SocketIO handlers can share it. The path is overridable via
+# CHAT_DB_PATH (tests point it at a throwaway temp DB); defaults to chat.db.
+connection = sqlite3.connect(
+    os.environ.get("CHAT_DB_PATH", "chat.db"), check_same_thread=False
+)
 cursor = connection.cursor()
 cursor.execute("PRAGMA foreign_keys = ON")
 
