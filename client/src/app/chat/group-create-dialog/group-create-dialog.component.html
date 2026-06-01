@@ -1,23 +1,26 @@
 <div class="gdlg">
   <header class="gdlg__head">
     <span class="gdlg__eyebrow">New group</span>
-    <h2 class="gdlg__title">Start a conversation</h2>
-    <span class="gdlg__rule" aria-hidden="true"></span>
+    <h2 class="gdlg__title">Name your group</h2>
   </header>
 
-  <label class="gdlg__label">Group name</label>
-  <input class="gdlg__input" [(ngModel)]="title" placeholder="e.g. Design crew" maxlength="80" />
+  <input class="gdlg__input" [(ngModel)]="title" placeholder="Group name" maxlength="80" />
 
-  <label class="gdlg__label">Add people</label>
-  <input class="gdlg__input" [(ngModel)]="search" placeholder="Search people…" />
+  <div class="gdlg__people-head">
+    <span class="gdlg__label">Add people</span>
+    @if (selected.size) {
+      <span class="gdlg__count">{{ selected.size }} selected</span>
+    }
+  </div>
+  <input class="gdlg__input gdlg__input--search" [(ngModel)]="search" placeholder="Search people…" />
 
   <div class="gdlg__people">
     @for (u of users; track u.username) {
       <button type="button" class="gdlg__person" [class.is-on]="isSelected(u.username)"
         (click)="toggle(u.username)">
-        <app-avatar [name]="u.display_name" [seed]="u.username" [size]="28"></app-avatar>
+        <app-avatar [name]="u.display_name" [seed]="u.username" [size]="30"></app-avatar>
         <span class="gdlg__name">{{ u.display_name }}</span>
-        <span class="gdlg__check" [class.on]="isSelected(u.username)"></span>
+        <span class="gdlg__tick" [class.on]="isSelected(u.username)" aria-hidden="true"></span>
       </button>
     }
     @if (!users.length) {
@@ -26,9 +29,9 @@
   </div>
 
   <footer class="gdlg__actions">
-    <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
     <button mat-raised-button color="primary" type="button" [disabled]="!canCreate" (click)="create()">
-      Create{{ selected.size ? ' · ' + selected.size : '' }}
+      Create group
     </button>
   </footer>
 </div>

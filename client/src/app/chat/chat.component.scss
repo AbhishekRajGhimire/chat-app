@@ -63,7 +63,21 @@
 
   .active {
     background-color: $rojin-overlay-active;
-    box-shadow: inset 2px 0 0 $rojin-gold;
+    position: relative;
+
+    // Clean straight accent bar (the old inset box-shadow curved around the
+    // row's rounded corners and read as a stray bracket).
+    &::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 24px;
+      border-radius: 999px;
+      background: $rojin-gold;
+    }
   }
   .mat-mdc-list-item:hover {
     background-color: $rojin-overlay-hover;
@@ -718,13 +732,15 @@ input:focus,
 // --- Group chat additions --------------------------------------------------
 .sidebar-actions {
   display: flex;
+  flex-direction: column;
   gap: 8px;
 
-  .click-search-button {
-    flex: 1;
+  .click-search-button,
+  .new-group-button {
+    width: 100%;
+    white-space: nowrap;
   }
   .new-group-button {
-    flex: 1;
     font-family: $rojin-font-body !important;
     font-weight: 600;
     border-radius: $rojin-radius-sm !important;

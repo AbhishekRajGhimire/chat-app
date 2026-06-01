@@ -81,3 +81,24 @@ body {
   background: rgba(176, 141, 87, 0.6);
   background-clip: content-box;
 }
+
+/* Atelier dialog surface (panelClass: 'rojin-dialog'). Take explicit control of
+   the MDC dialog surface so content is uniformly inset — otherwise the rounded
+   corners + shadow misalign with flush, square-cornered content. */
+.rojin-dialog {
+  .mat-mdc-dialog-surface,
+  .mdc-dialog__surface {
+    border-radius: $rojin-radius-lg;
+    background: $rojin-paper;
+    overflow: hidden;
+  }
+  .mat-mdc-dialog-container {
+    --mdc-dialog-container-color: #{$rojin-paper};
+    padding: 0;
+  }
+  .mat-mdc-dialog-content,
+  .mat-mdc-dialog-surface > app-group-create-dialog {
+    display: block;
+    padding: 24px;
+  }
+}

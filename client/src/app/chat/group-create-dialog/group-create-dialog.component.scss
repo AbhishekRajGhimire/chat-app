@@ -7,83 +7,101 @@
   flex-direction: column;
 }
 
+// --- header ---------------------------------------------------------------
 .gdlg__head {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .gdlg__eyebrow {
+  display: block;
   font-family: $rojin-font-accent;
   font-style: italic;
   font-size: 13px;
+  line-height: 1.5;
   color: $rojin-gold;
 }
 .gdlg__title {
-  margin: 2px 0 0;
+  margin: 0;
   font-family: $rojin-font-display;
   font-weight: 400;
-  font-size: 22px;
+  font-size: 21px;
+  line-height: 1.2;
   color: $rojin-ink;
 }
-.gdlg__rule {
-  display: block;
-  width: 40px;
-  height: 2px;
-  margin-top: 10px;
-  background: $rojin-gold;
-  border-radius: 2px;
+
+// --- inputs ---------------------------------------------------------------
+.gdlg__input {
+  font-family: $rojin-font-body;
+  font-size: 14px;
+  color: $rojin-ink;
+  padding: 11px 14px;
+  border-radius: $rojin-radius-sm;
+  background: $rojin-canvas;
+  border: 1px solid $rojin-line;
+  transition: border-color $rojin-dur-fast $rojin-ease,
+    box-shadow $rojin-dur-fast $rojin-ease;
+
+  &::placeholder {
+    color: $rojin-text-meta;
+  }
+  &:focus {
+    outline: none;
+    border-color: $rojin-gold;
+    box-shadow: 0 0 0 3px $rojin-focus-ring;
+    background: $rojin-paper;
+  }
+}
+.gdlg__input--search {
+  margin-bottom: 8px;
 }
 
+// --- people-head: label + live count --------------------------------------
+.gdlg__people-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 16px 0 6px;
+}
 .gdlg__label {
   font-size: 10.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: $rojin-gold;
   font-weight: 700;
-  margin: 12px 0 5px;
+}
+.gdlg__count {
+  font-family: $rojin-font-accent;
+  font-style: italic;
+  font-size: 12.5px;
+  color: $rojin-ink-soft;
 }
 
-.gdlg__input {
-  font-family: $rojin-font-body;
-  font-size: 14px;
-  color: $rojin-ink;
-  padding: 11px 13px;
-  border-radius: $rojin-radius-sm;
-  background: $rojin-paper;
-  border: 1px solid $rojin-line;
-
-  &:focus {
-    outline: none;
-    border-color: $rojin-gold;
-    box-shadow: 0 0 0 3px $rojin-focus-ring;
-  }
-}
-
+// --- people list ----------------------------------------------------------
 .gdlg__people {
-  margin-top: 10px;
-  max-height: 260px;
+  max-height: 248px;
   overflow-y: auto;
   border: 1px solid $rojin-line;
-  border-radius: $rojin-radius-sm;
+  border-radius: $rojin-radius-md;
+  padding: 4px;
+  background: $rojin-paper;
 }
 
 .gdlg__person {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border: none;
+  border-radius: $rojin-radius-sm;
   background: none;
   cursor: pointer;
-  border-bottom: 1px solid rgba(176, 141, 87, 0.18);
+  transition: background $rojin-dur-fast $rojin-ease;
 
-  &:last-child {
-    border-bottom: none;
-  }
   &:hover {
     background: $rojin-overlay-search-hover;
   }
   &.is-on {
-    background: rgba(176, 141, 87, 0.1);
+    background: rgba(176, 141, 87, 0.12);
   }
 }
 
@@ -91,47 +109,56 @@
   flex: 1;
   text-align: left;
   font-family: $rojin-font-display;
-  font-size: 13.5px;
+  font-size: 14px;
   color: $rojin-ink;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.gdlg__check {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  border: 1.5px solid $rojin-line;
+// circular selector — empty ring → filled gold check
+.gdlg__tick {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid $rojin-border-strong;
   flex-shrink: 0;
+  transition: background $rojin-dur-fast $rojin-ease,
+    border-color $rojin-dur-fast $rojin-ease;
 
   &.on {
     background: $rojin-gold;
     border-color: $rojin-gold;
-    position: relative;
 
     &::after {
-      content: '✓';
+      content: '';
       position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      color: #2b1a06;
-      font-size: 13px;
-      font-weight: 800;
+      left: 7px;
+      top: 4px;
+      width: 5px;
+      height: 9px;
+      border: solid #2b1a06;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
     }
   }
 }
 
 .gdlg__empty {
-  padding: 16px;
+  padding: 18px;
   text-align: center;
   color: $rojin-text-meta;
   font-size: 13px;
 }
 
+// --- actions --------------------------------------------------------------
 .gdlg__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
 
   button {
     font-family: $rojin-font-body;
