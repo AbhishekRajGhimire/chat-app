@@ -2,7 +2,7 @@
   <button mat-icon-button type="button" routerLink="/" aria-label="Back to chat">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Your profile</span>
+  <span class="profile-toolbar__title">Your profile</span>
 </mat-toolbar>
 
 <div class="profile-wrap">
@@ -14,6 +14,11 @@
 
   @if (!loading) {
     <mat-card class="profile-card">
+      <header class="profile-head">
+        <span class="profile-head__eyebrow">Your account</span>
+        <h1 class="profile-head__title">Edit profile</h1>
+        <span class="profile-head__rule" aria-hidden="true"></span>
+      </header>
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
         <p class="profile-lead">
           Display name is shown in the directory and chat lists. Username stays your login id.

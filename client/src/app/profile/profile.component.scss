@@ -1,33 +1,88 @@
 @import '../ui/styles/tokens';
 
+:host {
+  display: block;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: $rojin-canvas;
+}
+
 .profile-toolbar {
-  font-family: "Montserrat", sans-serif;
-  background-color: $rojin-primary-dark !important;
+  background-color: $rojin-primary !important;
   color: $rojin-text-on-brand !important;
+
+  &__title {
+    font-family: $rojin-font-display;
+    font-weight: 400;
+    font-size: 19px;
+    letter-spacing: 0.01em;
+  }
 }
 
 .profile-wrap {
-  max-width: 560px;
-  margin: 24px auto;
+  max-width: 600px;
+  margin: 28px auto;
   padding: 0 16px 48px;
 }
 
 .profile-card {
-  padding: 20px 20px 8px;
+  padding: 28px 28px 16px;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-radius: $rojin-radius-lg;
+  box-shadow: $rojin-shadow-card;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: rojin-fade-rise $rojin-dur-base $rojin-ease both;
+  }
+}
+
+.profile-head {
+  margin-bottom: 18px;
+
+  &__eyebrow {
+    display: block;
+    font-family: $rojin-font-accent;
+    font-style: italic;
+    font-size: 13px;
+    color: $rojin-gold;
+  }
+
+  &__title {
+    margin: 4px 0 0;
+    font-family: $rojin-font-display;
+    font-weight: 400;
+    font-size: 26px;
+    color: $rojin-ink;
+  }
+
+  &__rule {
+    display: block;
+    width: 46px;
+    height: 2px;
+    margin-top: 12px;
+    background: $rojin-gold;
+    border-radius: 2px;
+    transform-origin: left center;
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: rojin-hairline-draw $rojin-dur-slow $rojin-ease 200ms both;
+    }
+  }
 }
 
 .profile-lead {
-  font-family: "Montserrat", sans-serif;
+  font-family: $rojin-font-body;
   font-size: 14px;
   color: $rojin-text-muted;
-  margin: 0 0 16px;
-  line-height: 1.45;
+  margin: 0 0 20px;
+  line-height: 1.5;
 }
 
 .profile-field {
   width: 100%;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .profile-field--bio textarea {
@@ -36,13 +91,16 @@
 }
 
 .profile-hint {
-  font-family: "Montserrat", sans-serif;
+  font-family: $rojin-font-accent;
+  font-style: italic;
+  color: $rojin-ink-soft;
   margin: 16px;
 }
 
 .profile-error {
   color: #b00020;
   font-size: 14px;
+  font-family: $rojin-font-body;
   margin: 8px 0 0;
 }
 
@@ -50,6 +108,12 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 22px;
   padding-bottom: 8px;
+
+  button {
+    font-family: $rojin-font-body;
+    font-weight: 600;
+    border-radius: $rojin-radius-sm !important;
+  }
 }

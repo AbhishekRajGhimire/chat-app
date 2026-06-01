@@ -6,15 +6,18 @@ import { Component, Input } from '@angular/core';
  * and white surfaces. Avoids the brand purple itself (would vanish on the
  * sidebar).
  */
+// Muted jewel tones tuned for the Aubergine Atelier palette: deep enough that
+// white initials stay AA-readable, and harmonious on both the ivory canvas and
+// the plum sidebar (no bright web primaries, no brand-plum clash).
 const AVATAR_COLORS = [
-  '#2563eb',
-  '#0d9488',
-  '#b45309',
-  '#be123c',
-  '#1b5e20',
-  '#7c3aed',
-  '#c2410c',
-  '#0369a1',
+  '#6a2c6c', // aubergine
+  '#7a4a1f', // bronze
+  '#7a3450', // wine
+  '#355c34', // forest
+  '#43436f', // indigo slate
+  '#84432a', // clay
+  '#5a3a6d', // mauve
+  '#1f5f52', // teal-pine
 ];
 
 @Component({
