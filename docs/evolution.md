@@ -50,6 +50,19 @@ Today: **per-username** rooms for DM delivery. For groups and clearer scaling:
 
 Payloads should carry **`conversation_id`** and **`sender_user_id`** (plus display hints as needed). Keep **JWT-authenticated connect** and server-side sender identity (see [`security.md`](./security.md)).
 
+> **Status:** the per-conversation room pattern (`conv:<id>`) is now **implemented** for group delivery; DMs still deliver via the per-username room (lowest-risk). Payloads carry `conversation_id` + `kind`.
+
+---
+
+## Video calling (planned — placeholder in UI today)
+
+A disabled **"🎥 Call — coming soon"** control already sits in the conversation header (both DMs and groups) so the seam exists. The intended implementation, as its own future sub-project:
+
+- **Signaling over the existing Socket.IO connection** — new events (e.g. `call_offer`, `call_answer`, `ice_candidate`, `call_end`) relayed to the callee's username room / the conversation room, with sender identity taken from the socket session (same trust model as `send_message`).
+- **Media via WebRTC** `RTCPeerConnection` directly between browsers; the server only brokers signaling. 1:1 first (DM), then small-group mesh or an SFU if needed.
+- **STUN/TURN**: a public STUN server for NAT traversal on the LAN; TURN only if relaying becomes necessary off-LAN.
+- No media ever touches the Flask process; keep it signaling-only to preserve the single-process model.
+
 ---
 
 ## Discovery: directory vs contacts (optional)
