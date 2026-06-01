@@ -51,6 +51,9 @@ Run a single spec by passing Karma a focused test (`fdescribe` / `fit` in the sp
 ### CI (`.github/workflows/ci.yml`)
 On every push and PR, two parallel jobs must pass: **backend** (`pytest -q`) and **frontend** (`npm ci && npm run build`). The frontend gate is the production build (type/template check), not `npm test`.
 
+### PWA
+The client is an installable PWA via **`@angular/pwa`** (ngsw). The **service worker only runs in production builds** (`npm run build`), never under `ng serve`. It also needs a **secure context** — works on `localhost`; **LAN phone install requires HTTPS** (roadmap). The web app manifest + icons live in **`client/public/`** (wired into `angular.json` assets); the chat-bubble icon is authored as `public/icons/icon.svg` and rasterized to PNGs with **`node scripts/build-icons.mjs`** (needs the `sharp` dev dep). `ngsw-config.json` prefetches the app shell and lazy-caches images/fonts; **`/api` and `/socket.io` are never cached**. To test: `npm run build` then serve `dist/client` over `localhost`.
+
 ### Environment knobs (`backend/.env`)
 `SECRET_KEY`, `JWT_SECRET_KEY`, `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`.
 
