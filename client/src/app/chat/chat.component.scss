@@ -715,6 +715,180 @@ input:focus,
   outline: none !important;
 }
 
+// --- Group chat additions --------------------------------------------------
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+
+  .click-search-button {
+    flex: 1;
+  }
+  .new-group-button {
+    flex: 1;
+    font-family: $rojin-font-body !important;
+    font-weight: 600;
+    border-radius: $rojin-radius-sm !important;
+    color: $rojin-text-on-brand !important;
+    border-color: $rojin-accent-outline !important;
+  }
+}
+
+.group-mono {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-family: $rojin-font-display;
+  font-size: 13px;
+  color: #fff;
+  background: linear-gradient(135deg, #6a2c6c, #7a3450);
+}
+
+.chat-header__mono {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  margin: 0 8px 0 2px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-family: $rojin-font-display;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #6a2c6c, #7a3450);
+}
+
+.chat-header__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chat-header__members {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: $rojin-font-body;
+  font-size: 12px;
+  color: $rojin-link;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: $rojin-gold-soft;
+}
+
+.chat-header__call {
+  flex-shrink: 0;
+  color: $rojin-ink-soft;
+}
+
+// Member management panel
+.member-panel {
+  flex-shrink: 0;
+  background: $rojin-paper;
+  border-bottom: 1px solid $rojin-line;
+  padding: 12px 16px;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  &__title {
+    font-family: $rojin-font-accent;
+    font-style: italic;
+    color: $rojin-ink-soft;
+    font-size: 13px;
+  }
+  &__leave {
+    border: none;
+    background: none;
+    color: #a23b4d;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  &__add {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  &__addlabel {
+    width: 100%;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: $rojin-gold;
+    font-weight: 700;
+  }
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &__name {
+    flex: 1;
+    font-family: $rojin-font-display;
+    font-size: 13px;
+    color: $rojin-ink;
+  }
+  &__x {
+    border: none;
+    background: none;
+    color: $rojin-ink-soft;
+    cursor: pointer;
+    font-size: 13px;
+  }
+}
+
+.member-add {
+  border: 1px solid $rojin-line;
+  background: $rojin-canvas;
+  color: $rojin-ink;
+  font-family: $rojin-font-body;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $rojin-gold;
+  }
+}
+
+// Group message sender attribution
+.sender-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 2px 2px;
+
+  &__name {
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+}
+
+.message-row--grouped.message-row--received {
+  padding-left: 29px; // align continuation bubbles under the sender avatar
+}
+
 @media only screen and (max-width: $rojin-breakpoint-mobile) {
   .chat-toolbar .chat-toolbar__user {
     max-width: min(52vw, 160px);

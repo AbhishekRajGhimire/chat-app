@@ -1,0 +1,141 @@
+@import '../../ui/styles/tokens';
+
+.gdlg {
+  font-family: $rojin-font-body;
+  color: $rojin-ink;
+  display: flex;
+  flex-direction: column;
+}
+
+.gdlg__head {
+  margin-bottom: 14px;
+}
+.gdlg__eyebrow {
+  font-family: $rojin-font-accent;
+  font-style: italic;
+  font-size: 13px;
+  color: $rojin-gold;
+}
+.gdlg__title {
+  margin: 2px 0 0;
+  font-family: $rojin-font-display;
+  font-weight: 400;
+  font-size: 22px;
+  color: $rojin-ink;
+}
+.gdlg__rule {
+  display: block;
+  width: 40px;
+  height: 2px;
+  margin-top: 10px;
+  background: $rojin-gold;
+  border-radius: 2px;
+}
+
+.gdlg__label {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: $rojin-gold;
+  font-weight: 700;
+  margin: 12px 0 5px;
+}
+
+.gdlg__input {
+  font-family: $rojin-font-body;
+  font-size: 14px;
+  color: $rojin-ink;
+  padding: 11px 13px;
+  border-radius: $rojin-radius-sm;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+
+  &:focus {
+    outline: none;
+    border-color: $rojin-gold;
+    box-shadow: 0 0 0 3px $rojin-focus-ring;
+  }
+}
+
+.gdlg__people {
+  margin-top: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid $rojin-line;
+  border-radius: $rojin-radius-sm;
+}
+
+.gdlg__person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(176, 141, 87, 0.18);
+
+  &:last-child {
+    border-bottom: none;
+  }
+  &:hover {
+    background: $rojin-overlay-search-hover;
+  }
+  &.is-on {
+    background: rgba(176, 141, 87, 0.1);
+  }
+}
+
+.gdlg__name {
+  flex: 1;
+  text-align: left;
+  font-family: $rojin-font-display;
+  font-size: 13.5px;
+  color: $rojin-ink;
+}
+
+.gdlg__check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid $rojin-line;
+  flex-shrink: 0;
+
+  &.on {
+    background: $rojin-gold;
+    border-color: $rojin-gold;
+    position: relative;
+
+    &::after {
+      content: '✓';
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #2b1a06;
+      font-size: 13px;
+      font-weight: 800;
+    }
+  }
+}
+
+.gdlg__empty {
+  padding: 16px;
+  text-align: center;
+  color: $rojin-text-meta;
+  font-size: 13px;
+}
+
+.gdlg__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+
+  button {
+    font-family: $rojin-font-body;
+    font-weight: 600;
+    border-radius: $rojin-radius-sm !important;
+  }
+}

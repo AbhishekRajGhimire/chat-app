@@ -7,11 +7,18 @@ import {
   ViewChild,
 } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../auth.service';
 import { DirectoryUser, ProfileService } from '../profile.service';
 import { Router } from '@angular/router';
 import { io } from 'socket.io-client';
 import { finalize } from 'rxjs/operators';
+import {
+  ConversationEntry,
+  RawConversation,
+  toEntry,
+} from './conversation';
+import { GroupCreateDialogComponent } from './group-create-dialog/group-create-dialog.component';
 
 interface Message {
   from: string;
@@ -21,47 +28,52 @@ interface Message {
   status?: 'sending' | 'sent' | 'failed';
 }
 
+// Mirrors the avatar palette so a sender's name color matches their avatar.
+const SENDER_COLORS = [
+  '#6a2c6c', '#7a4a1f', '#7a3450', '#355c34',
+  '#43436f', '#84432a', '#5a3a6d', '#1f5f52',
+];
+
 @Component({
-    selector: 'app-chat',
-    templateUrl: './chat.component.html',
-    styleUrls: ['./chat.component.scss'],
-    standalone: false
+  selector: 'app-chat',
+  templateUrl: './chat.component.html',
+  styleUrls: ['./chat.component.scss'],
+  standalone: false,
 })
 export class ChatComponent implements OnInit, OnDestroy {
   @ViewChild('messageScrollHost')
   private messageScrollHost?: ElementRef<HTMLElement>;
 
   currentUser: any;
-  /** Shown in toolbar; falls back to username. */
   toolbarLabel = '';
-  chatUsers: DirectoryUser[] = [];
-  chatHistory: { [username: string]: Message[] } = {};
-  /** Everyone registered except you — used for New Chat search. */
+  /** Sidebar: DMs + groups, keyed by `entry.key`. */
+  conversations: ConversationEntry[] = [];
+  /** Threads keyed by conversation key (username for DM, `conv:<id>` for group). */
+  chatHistory: { [key: string]: Message[] } = {};
   directoryUsers: DirectoryUser[] = [];
   directoryLoaded = false;
   onlineUsers: any[] = [];
   filteredUsers: DirectoryUser[] = [];
   socket: any;
-  selectedUser: string = ''; // to store the user selected for direct messages
+  /** Open conversation key ('' = none). */
+  selectedKey = '';
   searchInput = '';
   newMessage = '';
-  /** True while DM POST is in flight (prevents double send). */
   isSendingMessage = false;
-  /** Placeholder rows rendered while the directory is loading. */
   readonly skeletonRows = [0, 1, 2, 3];
 
-  /** Username currently typing to us in the open conversation (null = nobody). */
+  /** Sender currently typing in the open conversation (null = nobody). */
   typingFrom: string | null = null;
   private typingClearTimer: any = null;
   private lastTypingEmit = 0;
 
+  /** Whether the group member panel is open. */
+  membersOpen = false;
+
   private static readonly BASE_TITLE = 'Rojin : the org chat';
 
-  /** Match `chat.component.scss` mobile breakpoint — short placeholders, no keyboard hints. */
   composerPlaceholder = 'Type a message (Enter to send, Shift+Enter for new line)';
   searchPlaceholder = 'Search registered users (online or offline)';
-
-  /** Matches mobile breakpoint; hides brand tagline in toolbar when true. */
   compactToolbar = false;
 
   private mediaQuery?: MediaQueryList;
@@ -73,12 +85,11 @@ export class ChatComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private profileService: ProfileService,
     private router: Router,
-    private zone: NgZone
+    private zone: NgZone,
+    private dialog: MatDialog
   ) {
-    const token = localStorage.getItem('access_token');
     this.currentUser = localStorage.getItem('username') || '';
     this.toolbarLabel = this.currentUser;
-    const headers = new HttpHeaders().set('Authorization', 'Bearer ' + token);
     this.profileService.getMyProfile().subscribe({
       next: (p) => {
         this.toolbarLabel = p.display_name || this.currentUser;
@@ -87,119 +98,79 @@ export class ChatComponent implements OnInit, OnDestroy {
         /* keep username */
       },
     });
-    this.http.get<DirectoryUser[]>('/api/chats_history', { headers }).subscribe(
-      (data: DirectoryUser[]) => {
-        this.chatUsers = (data ?? []).map((e) => ({ ...e, unreadCount: 0 }));
-      },
-      (error) => {
-        if (error.status === 401 || error.status === 422) {
-          this.router.navigate(['/signin']);
-        }
-      }
-    );
 
-    this.http.get<DirectoryUser[]>('/api/directory_users', { headers }).subscribe(
-      (data: DirectoryUser[]) => {
-        this.directoryUsers = data ?? [];
-        this.directoryLoaded = true;
-        this.applyNewChatFilter();
-      },
-      (error) => {
-        this.directoryLoaded = true;
-        if (error.status === 401 || error.status === 422) {
-          this.router.navigate(['/signin']);
-        }
-      }
-    );
+    this.loadConversations();
 
-    // Socket.IO: JWT in query string (verified on connect); sender identity comes from the server.
+    this.http
+      .get<DirectoryUser[]>('/api/directory_users', { headers: this.authHeaders() })
+      .subscribe(
+        (data) => {
+          this.directoryUsers = data ?? [];
+          this.directoryLoaded = true;
+          this.applyNewChatFilter();
+        },
+        (error) => {
+          this.directoryLoaded = true;
+          this.redirectIfUnauth(error);
+        }
+      );
+
     const accessToken = localStorage.getItem('access_token') || '';
-    this.socket = io({
-      query: { token: accessToken },
-    });
-    this.socket.on('connect', () => {
-      this.zone.run(() => {
-        /* presence registered in server connect handler */
-      });
-    });
+    this.socket = io({ query: { token: accessToken } });
+    this.socket.on('connect', () => this.zone.run(() => {}));
     this.socket.on('online_users', (users: any) => {
       this.zone.run(() => {
         this.onlineUsers = Array.isArray(users) ? users : [];
         this.applyNewChatFilter();
       });
     });
-
-    this.socket.on('receive_message', (data: any) => {
-      this.zone.run(() => {
-        if (!data?.username || data.message === undefined || data.message === null) {
-          return;
-        }
-        const from = String(data.username);
-        const msg: Message = {
-          from,
-          to: this.currentUser,
-          message: String(data.message),
-          // Keep the raw timestamp; formatting + day-grouping happen in the
-          // template via formatMessageTime()/daySeparatorLabel().
-          datetime: data.datetime ?? new Date().toISOString(),
-        };
-        const prev = this.chatHistory[from] ?? [];
-        this.chatHistory = { ...this.chatHistory, [from]: [...prev, msg] };
-
-        // A message from this peer means they've stopped "typing".
-        if (from === this.typingFrom) {
-          this.typingFrom = null;
-        }
-
-        // Find the sidebar entry, or create it live (new conversation).
-        let entry = this.chatUsers.find((e) => e.username === from);
-        if (!entry) {
-          const dir = this.directoryUsers.find((e) => e.username === from);
-          entry = {
-            username: from,
-            display_name: dir?.display_name ?? from,
-            unreadCount: 0,
-          };
-          this.chatUsers = [...this.chatUsers, entry];
-        }
-        entry.last_message = msg.message;
-        entry.last_message_at = msg.datetime;
-
-        const isOpen = from === this.selectedUser && !document.hidden;
-        if (isOpen) {
-          this.scrollThreadToBottom();
-        } else {
-          entry.unreadCount = (entry.unreadCount || 0) + 1;
-        }
-        this.refreshTabTitle();
-      });
-    });
-
-    this.socket.on('peer_typing', (data: any) => {
-      this.zone.run(() => {
-        const from = data?.from ? String(data.from) : '';
-        if (!from || from !== this.selectedUser) {
-          return;
-        }
-        this.typingFrom = from;
-        if (this.typingClearTimer) {
-          clearTimeout(this.typingClearTimer);
-        }
-        this.typingClearTimer = setTimeout(
-          () => this.zone.run(() => (this.typingFrom = null)),
-          3000
-        );
-      });
-    });
+    this.socket.on('receive_message', (data: any) => this.zone.run(() => this.onReceive(data)));
+    this.socket.on('peer_typing', (data: any) => this.zone.run(() => this.onPeerTyping(data)));
+    this.socket.on('conversation_added', () => this.zone.run(() => this.loadConversations()));
+    this.socket.on('conversation_removed', (data: any) =>
+      this.zone.run(() => this.onConversationRemoved(data))
+    );
 
     this.socket.connect();
     this.applyViewportPlaceholders();
   }
 
-  ngOnInit(): void {
-    if (typeof window === 'undefined') {
-      return;
+  // --- setup / teardown ----------------------------------------------------
+  private authHeaders(): HttpHeaders {
+    return new HttpHeaders().set(
+      'Authorization',
+      'Bearer ' + localStorage.getItem('access_token')
+    );
+  }
+
+  private redirectIfUnauth(error: any): void {
+    if (error?.status === 401 || error?.status === 422) {
+      this.router.navigate(['/signin']);
     }
+  }
+
+  /** (Re)load the sidebar, preserving live unread counts by key. */
+  private loadConversations(): void {
+    this.http
+      .get<RawConversation[]>('/api/chats_history', { headers: this.authHeaders() })
+      .subscribe(
+        (data) => {
+          const prevUnread = new Map(
+            this.conversations.map((c) => [c.key, c.unreadCount || 0])
+          );
+          this.conversations = (data ?? []).map((raw) => {
+            const e = toEntry(raw);
+            e.unreadCount = prevUnread.get(e.key) || 0;
+            return e;
+          });
+          this.refreshTabTitle();
+        },
+        (error) => this.redirectIfUnauth(error)
+      );
+  }
+
+  ngOnInit(): void {
+    if (typeof window === 'undefined') return;
     this.mediaQuery = window.matchMedia('(max-width: 768px)');
     if (this.mediaQuery.addEventListener) {
       this.mediaQuery.addEventListener('change', this.mqHandler);
@@ -209,9 +180,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   private applyViewportPlaceholders(): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
+    if (typeof window === 'undefined') return;
     const compact = window.matchMedia('(max-width: 768px)').matches;
     this.compactToolbar = compact;
     this.composerPlaceholder = compact
@@ -230,13 +199,9 @@ export class ChatComponent implements OnInit, OnDestroy {
         this.mediaQuery.removeListener(this.mqHandler as any);
       }
     }
-    if (this.typingClearTimer) {
-      clearTimeout(this.typingClearTimer);
-    }
+    if (this.typingClearTimer) clearTimeout(this.typingClearTimer);
     document.title = ChatComponent.BASE_TITLE;
-    if (this.socket) {
-      this.socket.disconnect();
-    }
+    if (this.socket) this.socket.disconnect();
   }
 
   logout() {
@@ -246,17 +211,15 @@ export class ChatComponent implements OnInit, OnDestroy {
         localStorage.removeItem('username');
         this.router.navigate(['/signin']);
       },
-      (error) => {
-        this.router.navigate(['/signin']);
-      }
+      () => this.router.navigate(['/signin'])
     );
   }
 
+  // --- New Chat search -----------------------------------------------------
   filterUsers(): void {
     this.applyNewChatFilter();
   }
 
-  /** New Chat list: all registered users (except you), filtered by search text. */
   private applyNewChatFilter(): void {
     if (!this.directoryUsers.length) {
       this.filteredUsers = [];
@@ -272,45 +235,53 @@ export class ChatComponent implements OnInit, OnDestroy {
       : [...this.directoryUsers];
   }
 
-  headerTitleFor(username: string): string {
-    const e =
-      this.chatUsers.find((u) => u.username === username) ||
-      this.directoryUsers.find((u) => u.username === username);
-    return e?.display_name ?? username;
+  // --- selected conversation accessors ------------------------------------
+  get selectedEntry(): ConversationEntry | null {
+    return this.conversations.find((c) => c.key === this.selectedKey) || null;
   }
 
+  /** DM peer username for the open conversation ('' for groups / none). */
+  get selectedUser(): string {
+    const e = this.selectedEntry;
+    return e && e.kind === 'direct' ? e.username || '' : '';
+  }
+
+  get isGroupOpen(): boolean {
+    return this.selectedEntry?.kind === 'group';
+  }
+
+  get headerTitle(): string {
+    return this.selectedEntry?.displayName ?? '';
+  }
+
+  get openThread(): Message[] {
+    return this.chatHistory[this.selectedKey] || [];
+  }
+
+  // --- date / grouping helpers --------------------------------------------
   private toDate(dt: any): Date | null {
     if (!dt) return null;
     const d = new Date(dt);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  /** Short time for a message bubble, e.g. "9:42 AM". */
   formatMessageTime(dt: any): string {
     const d = this.toDate(dt);
     if (!d) return String(dt ?? '');
     return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
-  /** "Today" / "Yesterday" / "May 30, 2026" for a date divider. */
   daySeparatorLabel(dt: any): string {
     const d = this.toDate(dt);
     if (!d) return '';
     const startOfDay = (x: Date) =>
       new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-    const diffDays = Math.round(
-      (startOfDay(new Date()) - startOfDay(d)) / 86400000
-    );
+    const diffDays = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
-    return d.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  /** True when the message at `index` starts a new calendar day in the thread. */
   shouldShowDaySeparator(thread: Message[], index: number): boolean {
     if (index <= 0) return true;
     const cur = this.toDate(thread[index]?.datetime);
@@ -319,7 +290,6 @@ export class ChatComponent implements OnInit, OnDestroy {
     return cur.toDateString() !== prev.toDateString();
   }
 
-  /** How far apart two timestamps are, in ms (Infinity if either is unparseable). */
   private gapMs(a: any, b: any): number {
     const da = this.toDate(a);
     const db = this.toDate(b);
@@ -327,10 +297,8 @@ export class ChatComponent implements OnInit, OnDestroy {
     return Math.abs(da.getTime() - db.getTime());
   }
 
-  /** Window within which same-sender messages collapse into one group. */
   private static readonly GROUP_WINDOW_MS = 5 * 60 * 1000;
 
-  /** True when this message continues the previous one's group (same sender, same day, within the window). */
   isContinuation(thread: Message[], index: number): boolean {
     if (index <= 0) return false;
     const cur = thread[index];
@@ -340,28 +308,47 @@ export class ChatComponent implements OnInit, OnDestroy {
     return this.gapMs(cur.datetime, prev.datetime) <= ChatComponent.GROUP_WINDOW_MS;
   }
 
-  /** True when this message is the last of its group — only then do we show the timestamp. */
   isGroupEnd(thread: Message[], index: number): boolean {
     if (index >= thread.length - 1) return true;
     return !this.isContinuation(thread, index + 1);
+  }
+
+  /** Show the sender name+avatar header above a received run in a group. */
+  showSenderHeader(thread: Message[], index: number): boolean {
+    if (!this.isGroupOpen) return false;
+    const m = thread[index];
+    if (!m || m.from === this.currentUser) return false;
+    return !this.isContinuation(thread, index);
+  }
+
+  senderColor(name: string): string {
+    const key = (name || '').toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+    return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
   }
 
   isUserOnline(username: string): boolean {
     return this.onlineUsers.some((u: any[]) => u[0] === username && u[1]);
   }
 
-  /** Conversation list, most-recent-first. Null timestamps and self sort last. */
-  get sortedChatUsers(): DirectoryUser[] {
-    const ts = (e: DirectoryUser) =>
-      e.username === this.currentUser
+  monogram(title: string): string {
+    const parts = (title || '?').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  get sortedConversations(): ConversationEntry[] {
+    const ts = (e: ConversationEntry) =>
+      e.kind === 'direct' && e.username === this.currentUser
         ? -Infinity
         : e.last_message_at
         ? new Date(e.last_message_at).getTime()
         : 0;
-    return [...this.chatUsers].sort((a, b) => ts(b) - ts(a));
+    return [...this.conversations].sort((a, b) => ts(b) - ts(a));
   }
 
-  /** Compact time for a DM row: "9:43", "Tue", or "May 30". */
   listTime(iso: any): string {
     const d = this.toDate(iso);
     if (!d) return '';
@@ -374,172 +361,333 @@ export class ChatComponent implements OnInit, OnDestroy {
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 
-  /** Sum of unread counts → browser tab title badge. */
   private refreshTabTitle(): void {
-    const total = this.chatUsers.reduce((n, e) => n + (e.unreadCount || 0), 0);
+    const total = this.conversations.reduce((n, e) => n + (e.unreadCount || 0), 0);
     document.title = total > 0 ? `(${total}) Rojin` : ChatComponent.BASE_TITLE;
   }
 
-  /** True when the open peer is currently typing to us. */
   get isPeerTyping(): boolean {
-    return !!this.typingFrom && this.typingFrom === this.selectedUser;
+    return !!this.typingFrom;
   }
 
-  /** Tell the open peer we're typing — throttled to at most once per 2s. */
   notifyTyping(): void {
-    if (!this.selectedUser) return;
+    const e = this.selectedEntry;
+    if (!e) return;
     const now = Date.now();
     if (now - this.lastTypingEmit < 2000) return;
     this.lastTypingEmit = now;
-    this.socket.emit('typing', { recipient: this.selectedUser });
+    if (e.kind === 'group') {
+      this.socket.emit('typing', { conversation_id: e.conversationId });
+    } else {
+      this.socket.emit('typing', { recipient: e.username });
+    }
   }
 
-  /** Scroll the open conversation panel to the latest message (after DOM update). */
   private scrollThreadToBottom(): void {
     setTimeout(() => {
       const el = this.messageScrollHost?.nativeElement;
-      if (el) {
-        el.scrollTop = el.scrollHeight;
-      }
+      if (el) el.scrollTop = el.scrollHeight;
     });
   }
 
   onComposerKeydown(event: KeyboardEvent): void {
-    if (this.isSendingMessage) {
-      return;
-    }
-    if (event.key !== 'Enter') {
-      return;
-    }
-    if (event.shiftKey) {
-      return;
-    }
+    if (this.isSendingMessage) return;
+    if (event.key !== 'Enter' || event.shiftKey) return;
     event.preventDefault();
     this.sendMessage();
   }
 
-  selectUser(username: string): void {
-    this.selectedUser = username;
-    this.searchInput = '';
-    this.typingFrom = null;
-    const opened = this.chatUsers.find((e) => e.username === username);
-    if (opened) {
-      opened.unreadCount = 0;
+  // --- incoming socket events ---------------------------------------------
+  private onReceive(data: any): void {
+    if (!data?.username || data.message === undefined || data.message === null) return;
+    const from = String(data.username);
+    const isGroup = data.kind === 'group' && data.conversation_id != null;
+    const key = isGroup ? `conv:${data.conversation_id}` : from;
+
+    const msg: Message = {
+      from,
+      to: this.currentUser,
+      message: String(data.message),
+      datetime: data.datetime ?? new Date().toISOString(),
+    };
+    const prev = this.chatHistory[key] ?? [];
+    this.chatHistory = { ...this.chatHistory, [key]: [...prev, msg] };
+
+    if (from === this.typingFrom) this.typingFrom = null;
+
+    let entry = this.conversations.find((e) => e.key === key);
+    if (!entry) {
+      if (isGroup) {
+        // We belong to a group we don't have locally yet — refetch the list.
+        this.loadConversations();
+      } else {
+        const dir = this.directoryUsers.find((e) => e.username === from);
+        entry = {
+          kind: 'direct',
+          key: from,
+          username: from,
+          displayName: dir?.display_name ?? from,
+          unreadCount: 0,
+        };
+        this.conversations = [...this.conversations, entry];
+      }
+    }
+    if (entry) {
+      entry.last_message = msg.message;
+      entry.last_message_at = msg.datetime;
+      if (key === this.selectedKey && !document.hidden) {
+        this.scrollThreadToBottom();
+      } else {
+        entry.unreadCount = (entry.unreadCount || 0) + 1;
+      }
     }
     this.refreshTabTitle();
-    this.applyNewChatFilter();
-    const headers = new HttpHeaders().set(
-      'Authorization',
-      'Bearer ' + localStorage.getItem('access_token')
+  }
+
+  private onPeerTyping(data: any): void {
+    const from = data?.from ? String(data.from) : '';
+    if (!from || from === this.currentUser) return;
+    const cid = data?.conversation_id;
+    const matches =
+      cid != null ? `conv:${cid}` === this.selectedKey : from === this.selectedKey;
+    if (!matches) return;
+    this.typingFrom = from;
+    if (this.typingClearTimer) clearTimeout(this.typingClearTimer);
+    this.typingClearTimer = setTimeout(
+      () => this.zone.run(() => (this.typingFrom = null)),
+      3000
     );
-    this.http
-      .get<Message[]>(`/api/dm/messages/${encodeURIComponent(username)}`, {
-        headers,
-      })
-      .subscribe(
-        (data) => {
-          this.chatHistory = {
-            ...this.chatHistory,
-            [username]: data ?? [],
-          };
-          this.scrollThreadToBottom();
-        },
-        (error) => {
-          if (error.status === 401 || error.status === 422) {
-            this.router.navigate(['/signin']);
-          }
-        }
-      );
   }
 
-  showSearch() {
-    this.selectedUser = '';
+  private onConversationRemoved(data: any): void {
+    const cid = data?.conversation_id;
+    if (cid == null) return;
+    const key = `conv:${cid}`;
+    this.conversations = this.conversations.filter((e) => e.key !== key);
+    if (this.selectedKey === key) this.selectedKey = '';
+    const { [key]: _drop, ...rest } = this.chatHistory;
+    this.chatHistory = rest;
+    this.refreshTabTitle();
+  }
+
+  // --- selecting / navigating ---------------------------------------------
+  selectConversation(entry: ConversationEntry): void {
+    this.selectedKey = entry.key;
+    this.searchInput = '';
+    this.typingFrom = null;
+    this.membersOpen = false;
+    entry.unreadCount = 0;
+    this.refreshTabTitle();
+    this.applyNewChatFilter();
+
+    const url =
+      entry.kind === 'group'
+        ? `/api/groups/${entry.conversationId}/messages`
+        : `/api/dm/messages/${encodeURIComponent(entry.username || '')}`;
+    this.http.get<Message[]>(url, { headers: this.authHeaders() }).subscribe(
+      (data) => {
+        this.chatHistory = { ...this.chatHistory, [entry.key]: data ?? [] };
+        this.scrollThreadToBottom();
+      },
+      (error) => this.redirectIfUnauth(error)
+    );
+  }
+
+  /** Open (or create locally) a DM from the New Chat search. */
+  selectDirect(username: string): void {
+    let entry = this.conversations.find(
+      (e) => e.kind === 'direct' && e.username === username
+    );
+    if (!entry) {
+      const dir = this.directoryUsers.find((e) => e.username === username);
+      entry = {
+        kind: 'direct',
+        key: username,
+        username,
+        displayName: dir?.display_name ?? username,
+        unreadCount: 0,
+      };
+      this.conversations = [...this.conversations, entry];
+    }
+    this.selectConversation(entry);
+  }
+
+  showSearch(): void {
+    this.selectedKey = '';
+    this.membersOpen = false;
     this.applyNewChatFilter();
   }
 
-  /** Mobile: leave conversation and return to inbox + search (master). */
   backToInbox(): void {
     this.showSearch();
   }
 
+  // --- creating a group ----------------------------------------------------
+  openNewGroup(): void {
+    const ref = this.dialog.open(GroupCreateDialogComponent, {
+      data: { users: this.directoryUsers },
+      width: '420px',
+      panelClass: 'rojin-dialog',
+    });
+    ref.afterClosed().subscribe((result) => {
+      if (!result?.title || !result?.members?.length) return;
+      this.http
+        .post<any>(
+          '/api/groups',
+          { title: result.title, members: result.members },
+          { headers: this.authHeaders() }
+        )
+        .subscribe(
+          (group) => {
+            const entry = toEntry({
+              kind: 'group',
+              conversation_id: group.conversation_id,
+              title: group.title,
+              member_count: group.member_count,
+            });
+            if (!this.conversations.some((e) => e.key === entry.key)) {
+              this.conversations = [...this.conversations, entry];
+            }
+            this.selectConversation(entry);
+          },
+          (error) => this.redirectIfUnauth(error)
+        );
+    });
+  }
+
+  // --- member management ---------------------------------------------------
+  toggleMembers(): void {
+    this.membersOpen = !this.membersOpen;
+    if (this.membersOpen) this.refreshMembers();
+  }
+
+  groupMembers: DirectoryUser[] = [];
+  private refreshMembers(): void {
+    const e = this.selectedEntry;
+    if (!e || e.kind !== 'group') return;
+    this.http
+      .get<any>(`/api/groups/${e.conversationId}`, { headers: this.authHeaders() })
+      .subscribe(
+        (g) => (this.groupMembers = g.members ?? []),
+        (error) => this.redirectIfUnauth(error)
+      );
+  }
+
+  addGroupMember(username: string): void {
+    const e = this.selectedEntry;
+    if (!e || e.kind !== 'group') return;
+    this.http
+      .post<any>(
+        `/api/groups/${e.conversationId}/members`,
+        { members: [username] },
+        { headers: this.authHeaders() }
+      )
+      .subscribe(
+        (g) => {
+          this.groupMembers = g.members ?? [];
+          e.memberCount = g.member_count;
+        },
+        (error) => this.redirectIfUnauth(error)
+      );
+  }
+
+  removeGroupMember(username: string): void {
+    const e = this.selectedEntry;
+    if (!e || e.kind !== 'group') return;
+    this.http
+      .delete<any>(
+        `/api/groups/${e.conversationId}/members/${encodeURIComponent(username)}`,
+        { headers: this.authHeaders() }
+      )
+      .subscribe(
+        (g) => {
+          this.groupMembers = g.members ?? [];
+          e.memberCount = g.member_count;
+        },
+        (error) => this.redirectIfUnauth(error)
+      );
+  }
+
+  /** Members not already in the open group (candidates to add). */
+  get addableUsers(): DirectoryUser[] {
+    const have = new Set(this.groupMembers.map((m) => m.username));
+    return this.directoryUsers.filter((u) => !have.has(u.username));
+  }
+
+  leaveGroup(): void {
+    const e = this.selectedEntry;
+    if (!e || e.kind !== 'group') return;
+    this.http
+      .post<any>(`/api/groups/${e.conversationId}/leave`, {}, { headers: this.authHeaders() })
+      .subscribe(
+        () => {
+          this.conversations = this.conversations.filter((c) => c.key !== e.key);
+          this.selectedKey = '';
+          this.membersOpen = false;
+        },
+        (error) => this.redirectIfUnauth(error)
+      );
+  }
+
+  // --- sending -------------------------------------------------------------
   sendMessage(): void {
-    if (this.isSendingMessage || !this.newMessage.trim() || !this.selectedUser) {
-      return;
-    }
+    const e = this.selectedEntry;
+    if (this.isSendingMessage || !this.newMessage.trim() || !e) return;
     const text = this.newMessage;
-    const peer = this.selectedUser;
 
     const msg: Message = {
       from: this.currentUser,
-      to: peer,
+      to: e.key,
       message: text,
       datetime: new Date().toISOString(),
       status: 'sending',
     };
-    const threadBefore = this.chatHistory[peer] ?? [];
-    this.chatHistory = {
-      ...this.chatHistory,
-      [peer]: [...threadBefore, msg],
-    };
-    // Reflect the new message in the sidebar (preview + recency reorder).
-    const entry = this.chatUsers.find((e) => e.username === peer);
-    if (entry) {
-      entry.last_message = text;
-      entry.last_message_at = msg.datetime;
-    }
+    const before = this.chatHistory[e.key] ?? [];
+    this.chatHistory = { ...this.chatHistory, [e.key]: [...before, msg] };
+    e.last_message = text;
+    e.last_message_at = msg.datetime;
     this.scrollThreadToBottom();
     this.newMessage = '';
 
-    this.postMessage(peer, text, msg);
+    this.postMessage(e, text, msg);
   }
 
-  /** Emit + POST a message, flipping its status on the result. Shared by send and retry. */
-  private postMessage(peer: string, text: string, msg: Message): void {
-    this.socket.emit('send_message', { recipient: peer, message: text });
-
+  private postMessage(entry: ConversationEntry, text: string, msg: Message): void {
     this.isSendingMessage = true;
-    const headers = new HttpHeaders().set(
-      'Authorization',
-      'Bearer ' + localStorage.getItem('access_token')
-    );
-    this.http
-      .post<{ message: string }>(
-        '/api/dm/messages',
-        { to_username: peer, body: text },
-        { headers }
-      )
-      .pipe(finalize(() => (this.isSendingMessage = false)))
-      .subscribe({
-        next: () => {
-          msg.status = 'sent';
-          if (!this.chatUsers.some((e) => e.username === peer)) {
-            const fromDir = this.directoryUsers.find((e) => e.username === peer);
-            const newEntry: DirectoryUser = fromDir ?? {
-              username: peer,
-              display_name: peer,
-            };
-            newEntry.last_message = text;
-            newEntry.last_message_at = msg.datetime;
-            newEntry.unreadCount = 0;
-            this.chatUsers = [...this.chatUsers, newEntry];
-          }
-        },
-        error: (err) => {
-          // Never silently drop the message — leave it visible and retryable.
-          msg.status = 'failed';
-          if (err.status === 401 || err.status === 422) {
-            this.router.navigate(['/signin']);
-          }
-        },
+    let req;
+    if (entry.kind === 'group') {
+      this.socket.emit('send_message', {
+        conversation_id: entry.conversationId,
+        message: text,
       });
+      req = this.http.post<any>(
+        `/api/groups/${entry.conversationId}/messages`,
+        { body: text },
+        { headers: this.authHeaders() }
+      );
+    } else {
+      this.socket.emit('send_message', { recipient: entry.username, message: text });
+      req = this.http.post<any>(
+        '/api/dm/messages',
+        { to_username: entry.username, body: text },
+        { headers: this.authHeaders() }
+      );
+    }
+    req.pipe(finalize(() => (this.isSendingMessage = false))).subscribe({
+      next: () => {
+        msg.status = 'sent';
+      },
+      error: (err: any) => {
+        msg.status = 'failed';
+        this.redirectIfUnauth(err);
+      },
+    });
   }
 
-  /** Re-send a message that previously failed. */
-  retryMessage(peer: string, msg: Message): void {
-    if (!peer || msg.status === 'sending') {
-      return;
-    }
+  retryMessage(msg: Message): void {
+    const e = this.selectedEntry;
+    if (!e || msg.status === 'sending') return;
     msg.status = 'sending';
-    this.postMessage(peer, msg.message, msg);
+    this.postMessage(e, msg.message, msg);
   }
 }
