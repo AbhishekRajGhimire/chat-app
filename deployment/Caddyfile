@@ -1,13 +1,21 @@
 Avi.local, localhost {
 	tls deployment/certs/avi.local.pem deployment/certs/avi.local-key.pem
-
-	# API + realtime → Flask (Caddy auto-upgrades WebSockets)
-	@backend path /api/* /socket.io/*
-	reverse_proxy @backend localhost:3000
-
-	# Built SPA + deep-link fallback
-	root * client/dist/client
-	try_files {path} /index.html
-	file_server
 	encode gzip
+
+	# API + realtime → Flask (Caddy auto-upgrades WebSockets).
+	# `handle` blocks are mutually exclusive and matched in order, so these
+	# paths are proxied and never hit the SPA try_files fallback below.
+	handle /api/* {
+		reverse_proxy localhost:3000
+	}
+	handle /socket.io/* {
+		reverse_proxy localhost:3000
+	}
+
+	# Built SPA + deep-link fallback (everything else).
+	handle {
+		root * client/dist/client
+		try_files {path} /index.html
+		file_server
+	}
 }
