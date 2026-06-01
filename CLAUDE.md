@@ -44,7 +44,9 @@ npm test                            # karma + jasmine (Chrome launcher)
 Run a single spec by passing Karma a focused test (`fdescribe` / `fit` in the spec) — there is no test-name CLI flag wired up.
 
 ### Environment knobs (`backend/.env`)
-`SECRET_KEY`, `JWT_SECRET_KEY` (override the dev fallbacks before any LAN use), `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`.
+`SECRET_KEY`, `JWT_SECRET_KEY`, `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`.
+
+**Secrets are fail-fast.** `FLASK_DEBUG` defaults to **false**. When debug is off, `chat/__init__.py` **refuses to start** unless both `SECRET_KEY` and `JWT_SECRET_KEY` are set — the committed dev fallbacks apply only when `FLASK_DEBUG=true`. So a real/LAN run can't silently sign JWTs with a repo-known secret, and the dev "just run it" path still works once you set `FLASK_DEBUG=true` locally. Rotating `JWT_SECRET_KEY` invalidates all live tokens (one re-login per user; `chat.db` data is untouched).
 
 ## Architecture
 
