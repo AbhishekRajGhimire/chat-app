@@ -70,6 +70,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   /** Whether the group member panel is open. */
   membersOpen = false;
 
+  /** conversationKey -> { username -> lastReadAtISO|null } for "seen" rendering. */
+  readState: { [key: string]: { [username: string]: string | null } } = {};
+
   private static readonly BASE_TITLE = 'Rojin : the org chat';
 
   composerPlaceholder = 'Type a message (Enter to send, Shift+Enter for new line)';
@@ -130,6 +133,9 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.socket.on('conversation_removed', (data: any) =>
       this.zone.run(() => this.onConversationRemoved(data))
     );
+    this.socket.on('conversation_read', (data: any) =>
+      this.zone.run(() => this.onConversationRead(data))
+    );
 
     this.socket.connect();
     this.applyViewportPlaceholders();
@@ -155,14 +161,8 @@ export class ChatComponent implements OnInit, OnDestroy {
       .get<RawConversation[]>('/api/chats_history', { headers: this.authHeaders() })
       .subscribe(
         (data) => {
-          const prevUnread = new Map(
-            this.conversations.map((c) => [c.key, c.unreadCount || 0])
-          );
-          this.conversations = (data ?? []).map((raw) => {
-            const e = toEntry(raw);
-            e.unreadCount = prevUnread.get(e.key) || 0;
-            return e;
-          });
+          // Server-backed unread is authoritative (persists across reload).
+          this.conversations = (data ?? []).map((raw) => toEntry(raw));
           this.refreshTabTitle();
         },
         (error) => this.redirectIfUnauth(error)
@@ -437,6 +437,7 @@ export class ChatComponent implements OnInit, OnDestroy {
       entry.last_message_at = msg.datetime;
       if (key === this.selectedKey && !document.hidden) {
         this.scrollThreadToBottom();
+        this.markRead(entry);
       } else {
         entry.unreadCount = (entry.unreadCount || 0) + 1;
       }
@@ -484,13 +485,75 @@ export class ChatComponent implements OnInit, OnDestroy {
       entry.kind === 'group'
         ? `/api/groups/${entry.conversationId}/messages`
         : `/api/dm/messages/${encodeURIComponent(entry.username || '')}`;
-    this.http.get<Message[]>(url, { headers: this.authHeaders() }).subscribe(
+    this.http.get<any>(url, { headers: this.authHeaders() }).subscribe(
       (data) => {
-        this.chatHistory = { ...this.chatHistory, [entry.key]: data ?? [] };
+        const messages = data?.messages ?? [];
+        this.chatHistory = { ...this.chatHistory, [entry.key]: messages };
+        this.applyReadState(entry.key, data?.read_state ?? []);
         this.scrollThreadToBottom();
+        this.markRead(entry);
       },
       (error) => this.redirectIfUnauth(error)
     );
+  }
+
+  /** Replace the read-state map for a conversation from a read_state payload. */
+  private applyReadState(
+    key: string,
+    rows: { username: string; last_read_at: string | null }[]
+  ): void {
+    const m: { [u: string]: string | null } = {};
+    for (const r of rows) m[r.username] = r.last_read_at;
+    this.readState = { ...this.readState, [key]: m };
+  }
+
+  /** Tell the server we've read the open conversation (when the tab is visible). */
+  markRead(entry: ConversationEntry): void {
+    if (document.hidden) return;
+    const url =
+      entry.kind === 'group'
+        ? `/api/groups/${entry.conversationId}/read`
+        : `/api/dm/${encodeURIComponent(entry.username || '')}/read`;
+    this.http.post(url, {}, { headers: this.authHeaders() }).subscribe({ error: () => {} });
+  }
+
+  /** Merge a live conversation_read event into the read-state map. */
+  private onConversationRead(data: any): void {
+    const cid = data?.conversation_id;
+    const username = data?.username;
+    const lastRead = data?.last_read_at;
+    if (!username || lastRead === undefined) return;
+    const groupKey = cid != null ? `conv:${cid}` : null;
+    // Update whichever key holds this member (group conv key or a DM keyed by username).
+    for (const key of Object.keys(this.readState)) {
+      if ((groupKey && key === groupKey) || username in this.readState[key]) {
+        this.readState = {
+          ...this.readState,
+          [key]: { ...this.readState[key], [username]: lastRead },
+        };
+      }
+    }
+  }
+
+  /**
+   * Readers (excluding me and the sender) whose last_read covers this message
+   * AND for whom this is their latest-read message — so each reader's avatar
+   * shows exactly once, under the last message they've seen.
+   */
+  readersOf(thread: Message[], index: number): string[] {
+    const rs = this.readState[this.selectedKey];
+    const msg = thread[index];
+    if (!rs || !msg) return [];
+    const msgTime = new Date(msg.datetime).getTime();
+    const next = thread[index + 1];
+    const nextTime = next ? new Date(next.datetime).getTime() : Infinity;
+    const out: string[] = [];
+    for (const [username, lastRead] of Object.entries(rs)) {
+      if (username === this.currentUser || username === msg.from || !lastRead) continue;
+      const read = new Date(lastRead).getTime();
+      if (read >= msgTime && read < nextTime) out.push(username);
+    }
+    return out;
   }
 
   /** Open (or create locally) a DM from the New Chat search. */

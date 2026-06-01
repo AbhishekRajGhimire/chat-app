@@ -607,6 +607,14 @@
   }
 }
 
+// Read receipts: tiny reader avatars under the last message each reader has seen.
+.seen-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+  margin: 2px 2px 0;
+}
+
 // --- Typing indicator ------------------------------------------------------
 .typing-bubble {
   align-self: flex-start;

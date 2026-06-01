@@ -196,6 +196,13 @@
                     }
                   </div>
                 </div>
+                @if (message.from === currentUser && readersOf(thread, i).length) {
+                  <div class="seen-row">
+                    @for (r of readersOf(thread, i); track r) {
+                      <app-avatar [name]="r" [seed]="r" [size]="16"></app-avatar>
+                    }
+                  </div>
+                }
               }
             </div>
           }

@@ -24,6 +24,7 @@ export interface RawConversation {
   member_count?: number;
   last_message?: string | null;
   last_message_at?: string | null;
+  unread_count?: number;
 }
 
 export function toEntry(raw: RawConversation): ConversationEntry {
@@ -36,7 +37,7 @@ export function toEntry(raw: RawConversation): ConversationEntry {
       memberCount: raw.member_count,
       last_message: raw.last_message ?? null,
       last_message_at: raw.last_message_at ?? null,
-      unreadCount: 0,
+      unreadCount: raw.unread_count ?? 0,
     };
   }
   return {
