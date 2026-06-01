@@ -31,7 +31,12 @@ pip install -r requirements.txt
 copy .env.example .env              # then edit secrets
 python main.py                      # serves on http://0.0.0.0:3000
 ```
-There is **no separate lint/test setup** for the backend.
+**Backend tests** (pytest):
+```powershell
+pip install -r requirements-dev.txt   # first time only
+pytest -q
+```
+Tests run against a throwaway DB via the `CHAT_DB_PATH` env var (set in `tests/conftest.py`), so they never touch `chat.db`. They cover auth, DM, group endpoints + membership, the conversation/room helpers, and a skippable Socket.IO smoke test.
 
 ### Frontend — `client/`
 ```powershell
@@ -41,7 +46,10 @@ npm run start                       # ng serve on :4200, proxy + --disable-host-
 npm run build                       # ng build
 npm test                            # karma + jasmine (Chrome launcher)
 ```
-Run a single spec by passing Karma a focused test (`fdescribe` / `fit` in the spec) — there is no test-name CLI flag wired up.
+Run a single spec by passing Karma a focused test (`fdescribe` / `fit` in the spec) — there is no test-name CLI flag wired up. The karma scaffold specs are pre-existing-broken and are **not** wired into CI.
+
+### CI (`.github/workflows/ci.yml`)
+On every push and PR, two parallel jobs must pass: **backend** (`pytest -q`) and **frontend** (`npm ci && npm run build`). The frontend gate is the production build (type/template check), not `npm test`.
 
 ### Environment knobs (`backend/.env`)
 `SECRET_KEY`, `JWT_SECRET_KEY`, `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`.
