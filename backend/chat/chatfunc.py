@@ -5,7 +5,13 @@ from flask import jsonify, request
 from flask_jwt_extended import decode_token, get_jwt_identity, jwt_required
 from flask_socketio import emit, join_room
 
-from .conversations import get_or_create_direct_conversation
+from .conversations import (
+    conversation_room,
+    get_or_create_direct_conversation,
+    group_members,
+    is_member,
+    user_conversation_ids,
+)
 from .database import connection, cursor
 
 from chat import app, online_users, socketio
@@ -88,6 +94,10 @@ def post_dm_message():
         (cid, me_row[0], body, now),
     )
     connection.commit()
+    # NOTE: live delivery happens via the socket `send_message` handler (DM →
+    # peer's username room). This POST only persists. Keeping DM delivery on the
+    # username room (unchanged) avoids the "recipient not yet in a brand-new
+    # conversation's room" problem; only groups use per-conversation rooms.
     return (
         jsonify(
             {
@@ -187,6 +197,7 @@ def get_chats_history():
     )
     peers = [
         {
+            "kind": "direct",
             "username": r[0],
             "display_name": r[1],
             "last_message": r[2],
@@ -194,14 +205,42 @@ def get_chats_history():
         }
         for r in cursor.fetchall()
     ]
+
+    # Group conversations the user belongs to.
+    cursor.execute(
+        """
+        SELECT c.id, c.title,
+            (SELECT COUNT(*) FROM ConversationMember cm2 WHERE cm2.conversation_id = c.id) AS member_count,
+            (SELECT m.body FROM Message m WHERE m.conversation_id = c.id
+             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message,
+            (SELECT m.created_at FROM Message m WHERE m.conversation_id = c.id
+             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at
+        FROM Conversation c
+        JOIN ConversationMember cm ON cm.conversation_id = c.id AND cm.user_id = ?
+        WHERE c.type = 'group'
+        """,
+        (me_id,),
+    )
+    groups = [
+        {
+            "kind": "group",
+            "conversation_id": int(r[0]),
+            "title": r[1] or "Group",
+            "member_count": int(r[2]),
+            "last_message": r[3],
+            "last_message_at": r[4],
+        }
+        for r in cursor.fetchall()
+    ]
+
     self_entry = {
+        "kind": "direct",
         "username": me_name,
         "display_name": self_display,
         "last_message": None,
         "last_message_at": None,
     }
-    combined = peers + [self_entry]
-    combined.sort(key=lambda e: e["display_name"].lower())
+    combined = peers + groups + [self_entry]
     return jsonify(combined)
 
 
@@ -239,6 +278,16 @@ def _register_socket_presence(username: str, sid: str) -> None:
         online_users.append((username, sid))
 
 
+def add_user_to_live_room(username: str, cid: int) -> None:
+    """Place an already-connected member into a conversation room without a
+    reconnect, and tell them (their username room) to add it to the sidebar."""
+    room = conversation_room(cid)
+    for uname, sid in online_users:
+        if uname == username and sid:
+            socketio.server.enter_room(sid, room)
+    socketio.emit("conversation_added", {"conversation_id": cid}, room=username)
+
+
 @socketio.on("connect")
 def on_connect():
     token = _handshake_bearer_token()
@@ -249,6 +298,12 @@ def on_connect():
         return False
     socket_user_by_sid[request.sid] = username
     _register_socket_presence(username, request.sid)
+    # Join a room per conversation so group (and DM) messages fan out correctly.
+    cursor.execute("SELECT id FROM User WHERE username=?", (username,))
+    me = cursor.fetchone()
+    if me:
+        for cid in user_conversation_ids(int(me[0])):
+            join_room(conversation_room(cid))
     emit("online_users", online_users, broadcast=True)
 
 
@@ -263,6 +318,12 @@ def on_disconnect():
     emit("online_users", online_users, broadcast=True)
 
 
+def _sender_user_id(username: str):
+    cursor.execute("SELECT id FROM User WHERE username=?", (username,))
+    row = cursor.fetchone()
+    return int(row[0]) if row else None
+
+
 @socketio.on("send_message")
 def handle_message(data):
     sender = socket_user_by_sid.get(request.sid)
@@ -272,24 +333,40 @@ def handle_message(data):
     message = data.get("message")
     if message is None or not isinstance(message, str):
         return
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Group: deliver to the conversation room (members joined on connect).
+    cid = data.get("conversation_id")
+    if cid is not None:
+        try:
+            cid = int(cid)
+        except (TypeError, ValueError):
+            return
+        uid = _sender_user_id(sender)
+        if uid is None or not is_member(cid, uid):
+            return
+        emit(
+            "receive_message",
+            {"username": sender, "message": message, "datetime": now,
+             "kind": "group", "conversation_id": cid},
+            room=conversation_room(cid),
+            skip_sid=request.sid,  # sender already appended optimistically
+        )
+        return
+
+    # Direct: deliver to the recipient's username room (unchanged behavior).
     recipient = data.get("recipient")
     if isinstance(recipient, str):
         recipient = recipient.strip() or None
     else:
         recipient = None
-    if not recipient and not data.get("recipientsid"):
+    if not recipient:
         return
-    payload = {
-        "username": sender,
-        "message": message,
-        "datetime": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
-    if recipient:
-        emit("receive_message", payload, room=recipient)
-    else:
-        recipientsid = data.get("recipientsid")
-        if recipientsid:
-            emit("receive_message", payload, room=recipientsid)
+    emit(
+        "receive_message",
+        {"username": sender, "message": message, "datetime": now, "kind": "direct"},
+        room=recipient,
+    )
 
 
 @socketio.on("typing")
@@ -300,6 +377,19 @@ def handle_typing(data):
     if not sender:
         return
     data = data or {}
+    cid = data.get("conversation_id")
+    if cid is not None:
+        try:
+            cid = int(cid)
+        except (TypeError, ValueError):
+            return
+        uid = _sender_user_id(sender)
+        if uid is None or not is_member(cid, uid):
+            return
+        emit("peer_typing", {"from": sender, "conversation_id": cid},
+             room=conversation_room(cid), skip_sid=request.sid)
+        return
     recipient = data.get("recipient")
     if isinstance(recipient, str) and recipient.strip():
-        emit("peer_typing", {"from": sender}, room=recipient.strip())
+        emit("peer_typing", {"from": sender, "conversation_id": None},
+             room=recipient.strip())
