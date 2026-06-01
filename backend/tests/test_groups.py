@@ -64,7 +64,7 @@ def test_group_message_persists(client, make_user):
         ).status_code
         == 201
     )
-    msgs = client.get(f"/api/groups/{cid}/messages", headers=alice["headers"]).get_json()
+    msgs = client.get(f"/api/groups/{cid}/messages", headers=alice["headers"]).get_json()["messages"]
     assert any(m["message"] == "hello crew" for m in msgs)
 
 

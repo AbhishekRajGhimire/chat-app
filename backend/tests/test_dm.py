@@ -7,8 +7,8 @@ def test_dm_post_and_history(client, make_user):
         headers=alice["headers"],
     )
     assert r.status_code == 201
-    a_hist = client.get("/api/dm/messages/bob", headers=alice["headers"]).get_json()
-    b_hist = client.get("/api/dm/messages/alice", headers=bob["headers"]).get_json()
+    a_hist = client.get("/api/dm/messages/bob", headers=alice["headers"]).get_json()["messages"]
+    b_hist = client.get("/api/dm/messages/alice", headers=bob["headers"]).get_json()["messages"]
     assert any(m["message"] == "hi bob" for m in a_hist)
     assert any(m["message"] == "hi bob" for m in b_hist)
 
@@ -42,5 +42,5 @@ def test_third_user_cannot_see_pair_messages(client, make_user):
         json={"to_username": "bob", "body": "secret"},
         headers=alice["headers"],
     )
-    hist = client.get("/api/dm/messages/alice", headers=carol["headers"]).get_json()
+    hist = client.get("/api/dm/messages/alice", headers=carol["headers"]).get_json()["messages"]
     assert all(m["message"] != "secret" for m in hist)

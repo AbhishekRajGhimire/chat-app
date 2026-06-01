@@ -12,6 +12,8 @@ from .conversations import (
     create_group_conversation,
     group_members,
     is_member,
+    mark_read,
+    read_state,
     remove_group_member,
 )
 from .database import connection, cursor
@@ -151,6 +153,22 @@ def leave_group(cid):
     return jsonify({"message": "left"}), 200
 
 
+@app.route("/api/groups/<int:cid>/read", methods=["POST"])
+@jwt_required()
+def mark_group_read(cid):
+    uid, err = _require_member(cid)
+    if err:
+        return err
+    now = _utc_now_iso()
+    mark_read(cid, uid, now)
+    socketio.emit(
+        "conversation_read",
+        {"conversation_id": cid, "username": get_jwt_identity(), "last_read_at": now},
+        room=conversation_room(cid),
+    )
+    return jsonify({"message": "ok", "last_read_at": now}), 200
+
+
 @app.route("/api/groups/<int:cid>/messages", methods=["GET"])
 @jwt_required()
 def get_group_messages(cid):
@@ -167,9 +185,8 @@ def get_group_messages(cid):
         """,
         (cid,),
     )
-    return jsonify(
-        [{"from": r[0], "message": r[1], "datetime": r[2]} for r in cursor.fetchall()]
-    )
+    messages = [{"from": r[0], "message": r[1], "datetime": r[2]} for r in cursor.fetchall()]
+    return jsonify({"messages": messages, "read_state": read_state(cid)})
 
 
 @app.route("/api/groups/<int:cid>/messages", methods=["POST"])

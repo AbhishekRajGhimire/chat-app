@@ -10,6 +10,9 @@ from .conversations import (
     get_or_create_direct_conversation,
     group_members,
     is_member,
+    mark_read,
+    read_state,
+    unread_count,
     user_conversation_ids,
 )
 from .database import connection, cursor
@@ -110,25 +113,49 @@ def post_dm_message():
     )
 
 
+@app.route("/api/dm/<other_username>/read", methods=["POST"])
+@jwt_required()
+def mark_dm_read(other_username):
+    me = get_jwt_identity()
+    cursor.execute("SELECT id FROM User WHERE username=?", (me,))
+    me_row = cursor.fetchone()
+    cursor.execute("SELECT id FROM User WHERE username=?", (other_username,))
+    other_row = cursor.fetchone()
+    if not me_row or not other_row:
+        return jsonify({"error": "Unknown user"}), 400
+    cid = _direct_conversation_id_for_pair(int(me_row[0]), int(other_row[0]))
+    if cid is None:
+        return jsonify({"message": "no conversation"}), 200
+    now = _utc_now_iso()
+    mark_read(cid, int(me_row[0]), now)
+    socketio.emit(
+        "conversation_read",
+        {"conversation_id": cid, "username": me, "last_read_at": now},
+        room=conversation_room(cid),
+    )
+    return jsonify({"message": "ok", "last_read_at": now}), 200
+
+
 @app.route("/api/dm/messages/<other_username>", methods=["GET"])
 @jwt_required()
 def get_dm_messages(other_username):
     me_username = get_jwt_identity()
+    empty = {"messages": [], "read_state": []}
     if other_username == me_username:
-        return jsonify([]), 200
+        return jsonify(empty), 200
 
     cursor.execute("SELECT id FROM User WHERE username=?", (me_username,))
     me_row = cursor.fetchone()
     cursor.execute("SELECT id FROM User WHERE username=?", (other_username,))
     other_row = cursor.fetchone()
     if not me_row or not other_row:
-        return jsonify([]), 200
+        return jsonify(empty), 200
 
     me_id = int(me_row[0])
     other_id = int(other_row[0])
     cid = _direct_conversation_id_for_pair(me_id, other_id)
     if cid is None:
-        return jsonify([]), 200
+        return jsonify(empty), 200
 
     cursor.execute(
         """
@@ -145,14 +172,9 @@ def get_dm_messages(other_username):
     for sender_name, sender_id, text, ts in rows:
         to_name = other_username if int(sender_id) == me_id else me_username
         formatted.append(
-            {
-                "from": sender_name,
-                "to": to_name,
-                "message": text,
-                "datetime": ts,
-            }
+            {"from": sender_name, "to": to_name, "message": text, "datetime": ts}
         )
-    return jsonify(formatted)
+    return jsonify({"messages": formatted, "read_state": read_state(cid)})
 
 
 @app.route("/api/chats_history", methods=["GET"])
@@ -178,7 +200,8 @@ def get_chats_history():
 
     cursor.execute(
         """
-        SELECT u.username,
+        SELECT c.id,
+            u.username,
             COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name,
             (SELECT m.body FROM Message m
              WHERE m.conversation_id = c.id
@@ -198,10 +221,11 @@ def get_chats_history():
     peers = [
         {
             "kind": "direct",
-            "username": r[0],
-            "display_name": r[1],
-            "last_message": r[2],
-            "last_message_at": r[3],
+            "username": r[1],
+            "display_name": r[2],
+            "last_message": r[3],
+            "last_message_at": r[4],
+            "unread_count": unread_count(int(r[0]), me_id),
         }
         for r in cursor.fetchall()
     ]
@@ -229,6 +253,7 @@ def get_chats_history():
             "member_count": int(r[2]),
             "last_message": r[3],
             "last_message_at": r[4],
+            "unread_count": unread_count(int(r[0]), me_id),
         }
         for r in cursor.fetchall()
     ]
@@ -239,6 +264,7 @@ def get_chats_history():
         "display_name": self_display,
         "last_message": None,
         "last_message_at": None,
+        "unread_count": 0,
     }
     combined = peers + groups + [self_entry]
     return jsonify(combined)
