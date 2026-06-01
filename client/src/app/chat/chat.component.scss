@@ -50,38 +50,25 @@
   min-height: 0;
 }
 
-// --- Sidebar (plum chrome) -------------------------------------------------
+// --- Sidebar (charcoal panel with frosted conversation cards) --------------
 .chats-sidebar {
-  background-color: $rojin-primary;
+  background-color: $rojin-chrome;
   color: $rojin-text-on-brand;
   width: $rojin-sidebar-width;
   align-self: stretch;
   min-height: 0;
   padding: 12px 10px;
   box-sizing: border-box;
-  background-image: radial-gradient(120% 60% at 0% 0%, rgba(176, 141, 87, 0.12), transparent 55%);
+  background-image: radial-gradient(120% 70% at 100% 0%, rgba(176, 141, 87, 0.16), transparent 60%);
 
-  .active {
-    background-color: $rojin-overlay-active;
-    position: relative;
-
-    // Clean straight accent bar (the old inset box-shadow curved around the
-    // row's rounded corners and read as a stray bracket).
-    &::before {
-      content: '';
-      position: absolute;
-      left: 3px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 3px;
-      height: 24px;
-      border-radius: 999px;
-      background: $rojin-gold;
-    }
-  }
   .mat-mdc-list-item:hover {
-    background-color: $rojin-overlay-hover;
+    background-color: rgba(255, 255, 255, 0.1);
     cursor: pointer;
+  }
+  // Selected: brighter frosted card with a gold edge.
+  .active {
+    background-color: rgba(255, 255, 255, 0.13);
+    border-color: rgba(176, 141, 87, 0.6);
   }
 }
 
@@ -168,8 +155,12 @@
   .mat-mdc-list-item {
     text-align: start;
     color: $rojin-text-on-brand;
-    border-radius: $rojin-radius-sm;
-    margin-bottom: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: $rojin-radius-md;
+    margin-bottom: 7px;
+    transition: background $rojin-dur-fast $rojin-ease,
+      border-color $rojin-dur-fast $rojin-ease;
   }
 
   .mat-mdc-list-item .mdc-list-item__content,
@@ -197,6 +188,7 @@
 .dm-row__name {
   font-family: $rojin-font-display;
   font-size: 13.5px;
+  color: #f4eef0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -204,7 +196,7 @@
 
 .dm-row__preview {
   font-size: 12px;
-  color: rgba(247, 242, 232, 0.5);
+  color: rgba(247, 242, 232, 0.72);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -226,7 +218,7 @@
 
 .dm-row__time {
   font-size: 10.5px;
-  color: rgba(247, 242, 232, 0.45);
+  color: #e0cdb0;
 }
 
 .dm-row__badge {
