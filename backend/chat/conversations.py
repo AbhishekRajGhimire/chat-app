@@ -76,6 +76,45 @@ def remove_group_member(cid: int, user_id: int) -> None:
     connection.commit()
 
 
+def mark_read(cid: int, user_id: int, when_iso: str) -> None:
+    cursor.execute(
+        "UPDATE ConversationMember SET last_read_at=? WHERE conversation_id=? AND user_id=?",
+        (when_iso, cid, user_id),
+    )
+    connection.commit()
+
+
+def unread_count(cid: int, user_id: int) -> int:
+    """Messages in cid newer than the member's last_read_at, excluding their own."""
+    cursor.execute(
+        "SELECT last_read_at FROM ConversationMember WHERE conversation_id=? AND user_id=?",
+        (cid, user_id),
+    )
+    row = cursor.fetchone()
+    last = row[0] if row else None
+    if last is None:
+        cursor.execute(
+            "SELECT COUNT(*) FROM Message WHERE conversation_id=? AND sender_user_id!=?",
+            (cid, user_id),
+        )
+    else:
+        cursor.execute(
+            "SELECT COUNT(*) FROM Message WHERE conversation_id=? AND sender_user_id!=? AND created_at>?",
+            (cid, user_id, last),
+        )
+    return int(cursor.fetchone()[0])
+
+
+def read_state(cid: int) -> list:
+    """[{username, last_read_at}] for every member — drives 'seen' rendering."""
+    cursor.execute(
+        "SELECT u.username, m.last_read_at FROM ConversationMember m "
+        "JOIN User u ON u.id = m.user_id WHERE m.conversation_id=?",
+        (cid,),
+    )
+    return [{"username": r[0], "last_read_at": r[1]} for r in cursor.fetchall()]
+
+
 def _utc_now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 

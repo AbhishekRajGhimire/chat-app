@@ -77,6 +77,7 @@ def _create_conversation_schema():
             role TEXT NOT NULL DEFAULT 'member'
                 CHECK (role IN ('owner', 'admin', 'member')),
             joined_at TEXT NOT NULL,
+            last_read_at TEXT,
             PRIMARY KEY (conversation_id, user_id)
         )
         """
@@ -118,6 +119,12 @@ _create_conversation_schema()
 if _legacy_pairwise_message_table():
     _drop_conversation_schema()
     _create_conversation_schema()
+
+# Idempotent migration: add last_read_at to ConversationMember on existing DBs.
+cursor.execute("PRAGMA table_info(ConversationMember)")
+if "last_read_at" not in {row[1] for row in cursor.fetchall()}:
+    cursor.execute("ALTER TABLE ConversationMember ADD COLUMN last_read_at TEXT")
+    connection.commit()
 
 cursor.execute(
     """
