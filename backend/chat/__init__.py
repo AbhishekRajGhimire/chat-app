@@ -78,8 +78,13 @@ online_users = []
 
 jwt = JWTManager(app)
 
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "")
+
 from chat import user
 from chat import chatfunc
 from chat import profile
 from chat import groups
+from chat import push
 from chat import database

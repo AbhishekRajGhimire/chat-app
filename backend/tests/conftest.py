@@ -6,6 +6,9 @@ os.environ["CHAT_DB_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret")
 os.environ.setdefault("FLASK_DEBUG", "true")
+os.environ.setdefault("VAPID_PUBLIC_KEY", "testpub")
+os.environ.setdefault("VAPID_PRIVATE_KEY", "testpriv")
+os.environ.setdefault("VAPID_SUBJECT", "mailto:test@rojin.local")
 
 import pytest
 from chat import app as flask_app

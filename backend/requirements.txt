@@ -5,3 +5,4 @@ flask-bcrypt
 flask-cors
 eventlet
 python-dotenv
+pywebpush
