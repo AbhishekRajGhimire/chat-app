@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 // import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
 import { AppRoutingModule } from './app-routing.module';
@@ -21,6 +21,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ServiceWorkerModule } from '@angular/service-worker';
 
 
 @NgModule({ declarations: [
@@ -45,5 +46,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatIconModule,
         MatDialogModule,
         MatTooltipModule,
-        UiModule], providers: [provideHttpClient(withInterceptorsFromDi())] })
+        UiModule,
+        
+      ServiceWorkerModule.register('ngsw-worker.js', {
+        enabled: !isDevMode(),
+        // Register the ServiceWorker as soon as the application is stable
+        // or after 30 seconds (whichever comes first).
+        registrationStrategy: 'registerWhenStable:30000'
+      })
+    ], providers: [provideHttpClient(withInterceptorsFromDi())] })
 export class AppModule { }
