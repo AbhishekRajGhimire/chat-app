@@ -14,7 +14,7 @@
     <button mat-raised-button color="primary" class="click-search-button" (click)="showSearch()">
       New Chat
     </button>
-    <h4 style="margin: 10px">Direct Messages</h4>
+    <h4 class="sidebar-heading">Direct messages</h4>
     <mat-list class="chat-users-list">
       @for (entry of chatUsers; track entry) {
         <mat-list-item (click)="selectUser(entry.username)"

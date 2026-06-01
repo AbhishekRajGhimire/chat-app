@@ -8,6 +8,7 @@
   // trailing `min-height: -webkit-fill-available` — it would win and collapse the
   // host to content height because app-root has no defined height.
   @include rojin-viewport-min-height;
+  background: $rojin-canvas;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -22,18 +23,24 @@
     text-overflow: ellipsis;
     max-width: 40vw;
     color: $rojin-text-on-brand;
+    font-family: $rojin-font-accent;
+    font-style: italic;
   }
 
   .chat-toolbar__profile {
-    font-family: $rojin-font-brand !important;
+    font-family: $rojin-font-body !important;
+    font-weight: 600;
     flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.95) !important;
+    color: $rojin-text-on-brand !important;
     border-color: $rojin-accent-outline !important;
+    border-radius: 999px !important;
   }
 
   .chat-toolbar__logout {
-    font-family: $rojin-font-brand !important;
+    font-family: $rojin-font-body !important;
+    font-weight: 600;
     flex-shrink: 0;
+    border-radius: 999px !important;
   }
 }
 
@@ -42,28 +49,21 @@
   flex: 1 1 auto;
   min-height: 0;
 }
-// .sidebar {
-//   // float: left;
-//   background-color: #4a154b !important;
-//   color: white;
-//   width: 15%;
-//   height: 100vh;
-//   // background-color: lightgray;
-//   font-family: "Montserrat", sans-serif !important;
 
-//   padding: 10px;
-// }
+// --- Sidebar (plum chrome) -------------------------------------------------
 .chats-sidebar {
   background-color: $rojin-primary;
   color: $rojin-text-on-brand;
   width: $rojin-sidebar-width;
   align-self: stretch;
   min-height: 0;
-  font-family: $rojin-font-brand;
-  padding: 10px;
+  padding: 12px 10px;
   box-sizing: border-box;
+  background-image: radial-gradient(120% 60% at 0% 0%, rgba(176, 141, 87, 0.12), transparent 55%);
+
   .active {
     background-color: $rojin-overlay-active;
+    box-shadow: inset 2px 0 0 $rojin-gold;
   }
   .mat-mdc-list-item:hover {
     background-color: $rojin-overlay-hover;
@@ -71,12 +71,22 @@
   }
 }
 
-.click-search-button{
-  font-family: "Montserrat", sans-serif !important;
-width: 100%;
+.sidebar-heading {
+  margin: 14px 10px 8px;
+  font-family: $rojin-font-accent;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(247, 242, 232, 0.62);
 }
 
-
+.click-search-button {
+  font-family: $rojin-font-body !important;
+  font-weight: 600;
+  width: 100%;
+  border-radius: $rojin-radius-sm !important;
+}
 
 .chat-and-search-panel {
   display: flex;
@@ -87,14 +97,15 @@ width: 100%;
   overflow: hidden;
 }
 
+// --- Conversation header (paper) -------------------------------------------
 .chat-header {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
-  padding: 8px 8px 8px 4px;
-  border-bottom: 1px solid $rojin-border;
-  background: $rojin-bg-elevated;
+  padding: 10px 12px 10px 6px;
+  border-bottom: 1px solid $rojin-line;
+  background: $rojin-paper;
 
   &__avatar {
     margin: 0 8px 0 2px;
@@ -104,9 +115,9 @@ width: 100%;
   &__title {
     margin: 0;
     font-size: 1.15rem;
-    font-weight: 600;
-    font-family: $rojin-font-brand;
-    color: $rojin-text-body;
+    font-weight: 400;
+    font-family: $rojin-font-display;
+    color: $rojin-ink;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -116,55 +127,35 @@ width: 100%;
 
   &__presence {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: $rojin-online;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    background: $rojin-online-soft;
+    padding: 3px 9px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
   }
 }
 
 .chat-back {
   display: none;
   flex-shrink: 0;
-  color: $rojin-text-body;
+  color: $rojin-ink;
 }
 
-// font-family: 'Victor Mono', monospace;
-
-// .chat-panel {
-//   // float: right;
-//   width: 80%;
-//   // height: 100vh;
-//   padding: 10px;
-// }
-
-//   mat-toolbar {
-//     display: flex;
-//     justify-content: space-between;
-//     align-items: center;
-//     padding: 0 20px;
-//   }
-
-
-// .chat-container {
-//   height: 300px; /* Adjust the height as needed */
-//   overflow-y: scroll; /* Enable vertical scrolling */
-//   /* Additional styling for the container */
-// }
+// --- DM list ---------------------------------------------------------------
 .chat-users-list {
   margin-top: 0;
   padding-top: 0;
   // MDC list rows: set a compact, consistent height via the MDC token rather
   // than forcing `height`, which clips MDC's internal content row.
-  --mdc-list-list-item-one-line-container-height: 44px;
+  --mdc-list-list-item-one-line-container-height: 48px;
 
   .mat-mdc-list-item {
-    font-size: 15px;
     text-align: start;
     color: $rojin-text-on-brand;
-    font-family: $rojin-font-brand;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: $rojin-radius-sm;
+    margin-bottom: 2px;
   }
 
   .mat-mdc-list-item .mdc-list-item__content,
@@ -176,108 +167,51 @@ width: 100%;
 .dm-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
 }
 
 .dm-row__name {
+  font-family: $rojin-font-display;
+  font-size: 13.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .dm-row__you {
-  opacity: 0.8;
+  opacity: 0.75;
+  font-family: $rojin-font-body;
+  font-size: 12px;
 }
 
-// .sent-message {
-//   align-self: flex-end;
-//   background-color: #e6e6e6;
-//   padding: 8px;
-//   border-radius: 4px;
-//   /* Additional styling for sent messages */
-// }
-
-// .received-message {
-//   background-color: #f0f0f0;
-//   padding: 8px;
-//   border-radius: 4px;
-//   /* Additional styling for received messages */
-// }
-
-// .message-footer {
-//   color: #999;
-//   /* Additional styling for the message footer */
-// }
-// .chat-container {
-//   // max-height: 300px;
-//   overflow-y: auto;
-// }
-
-// .sent-message {
-//   text-align: right;
-//   background-color: #007bff;
-//   color: #fff;
-//   padding: 8px;
-//   margin: 8px 0;
-//   border-radius: 8px;
-// }
-
-// .received-message {
-//   text-align: left;
-//   background-color: #f2f2f2;
-//   padding: 8px;
-//   margin: 8px 0;
-//   border-radius: 8px;
-// }
-
-// .message-footer {
-//   font-size: 10px;
-//   text-align: right;
-//   color: #999;
-// }
-
-// .message-input {
-//   display: flex;
-//   align-items: center;
-//   justify-content: space-between;
-//   margin-top: 16px;
-// }
-// .message-history-list{
-  
-  
-
-// }
-
-
-// .message-toolbar {
-//   background-color: #2b0a2c;
-//   color: white;
-//   font-family: "Montserrat", sans-serif;
-//   height: 50px;
-//   display: flex;
-//   align-items: center;
-//   padding: 0 20px;
-// }
-
+// --- New-chat search -------------------------------------------------------
 .search-bar-container {
   position: relative;
-  margin: 10px;
+  margin: 12px;
   justify-content: center;
 }
 
 .search-bar {
-  background-color: $rojin-bg-search;
-  border: 1px solid $rojin-border;
+  background-color: $rojin-paper;
+  border: 1px solid $rojin-line;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: $rojin-radius-sm;
+  transition: border-color $rojin-dur-fast $rojin-ease, box-shadow $rojin-dur-fast $rojin-ease;
+
+  &:focus-within {
+    border-color: $rojin-gold;
+    box-shadow: 0 0 0 3px $rojin-focus-ring;
+  }
 }
-.user-search{
+.user-search {
   width: 100%;
   border: none;
   background: transparent;
   padding: 10px;
+  font-family: $rojin-font-body;
+  color: $rojin-ink;
 }
 
 .search-results {
@@ -285,14 +219,15 @@ width: 100%;
   top: 100%;
   left: 0;
   right: 0;
-  background-color: $rojin-bg-elevated;
-  border: 1px solid $rojin-border;
+  background-color: $rojin-paper;
+  border: 1px solid $rojin-line;
   border-top: none;
-  border-radius: 0 0 4px 4px;
-  max-height: 200px;
+  border-radius: 0 0 $rojin-radius-sm $rojin-radius-sm;
+  max-height: 240px;
   overflow-y: auto;
   z-index: 1;
-  --mdc-list-list-item-one-line-container-height: 44px;
+  box-shadow: $rojin-shadow-card;
+  --mdc-list-list-item-one-line-container-height: 46px;
 
   .mat-mdc-list-item {
     cursor: pointer;
@@ -309,15 +244,12 @@ width: 100%;
   .mat-mdc-list-item:hover {
     background: $rojin-overlay-search-hover;
   }
-
-  &__hint {
-    margin: 10px;
-    font-size: 14px;
-    color: $rojin-text-muted;
-  }
 }
 
 .search-result-name {
+  font-family: $rojin-font-display;
+  font-size: 13.5px;
+  color: $rojin-ink;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -325,7 +257,7 @@ width: 100%;
 .search-result-username {
   margin-left: 8px;
   font-size: 12px;
-  color: $rojin-text-muted;
+  color: $rojin-ink-soft;
   flex-shrink: 0;
 }
 
@@ -338,12 +270,12 @@ width: 100%;
   text-transform: uppercase;
 }
 
-
+// --- Thread ----------------------------------------------------------------
 .chat-container {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  background-color: $rojin-bg-thread;
+  padding: 18px 18px 8px;
+  background-color: $rojin-canvas;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -364,12 +296,14 @@ width: 100%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
-    margin-bottom: 6px;
+    width: 58px;
+    height: 58px;
+    margin-bottom: 10px;
     border-radius: 50%;
-    background: $rojin-bg-search;
-    color: $rojin-primary;
+    background: $rojin-paper;
+    border: 1px solid $rojin-gold-soft;
+    color: $rojin-gold;
+    box-shadow: $rojin-shadow-card;
 
     mat-icon {
       font-size: 28px;
@@ -380,18 +314,18 @@ width: 100%;
 
   &__title {
     margin: 0;
-    font-family: $rojin-font-brand;
-    font-weight: 600;
-    font-size: 16px;
-    color: $rojin-text-body;
+    font-family: $rojin-font-display;
+    font-weight: 400;
+    font-size: 18px;
+    color: $rojin-ink;
   }
 
   &__sub {
     margin: 0;
     max-width: 34ch;
-    font-family: $rojin-font-brand;
-    font-size: 13px;
-    line-height: 1.45;
+    font-family: $rojin-font-body;
+    font-size: 13.5px;
+    line-height: 1.5;
     color: $rojin-text-meta;
   }
 }
@@ -426,21 +360,23 @@ width: 100%;
     background: linear-gradient(
       90deg,
       $rojin-bg-search 25%,
-      #f6f1f8 37%,
+      #f7efe0 37%,
       $rojin-bg-search 63%
     );
     background-size: 400% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-row__avatar,
+  .skeleton-row__line {
     animation: rojin-shimmer 1.4s ease infinite;
   }
 }
 
 @keyframes rojin-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: 0 0;
-  }
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
 }
 
 // Iconned empty states for the New Chat search.
@@ -450,27 +386,28 @@ width: 100%;
   align-items: center;
   text-align: center;
   gap: 4px;
-  padding: 24px 16px;
+  padding: 28px 16px;
 
   &__icon {
     width: 32px;
     height: 32px;
     font-size: 32px;
-    margin-bottom: 4px;
-    color: $rojin-border-strong;
+    margin-bottom: 6px;
+    color: $rojin-gold;
+    opacity: 0.8;
   }
 
   &__title {
     margin: 0;
-    font-family: $rojin-font-brand;
-    font-weight: 600;
+    font-family: $rojin-font-display;
+    font-weight: 400;
     font-size: 15px;
-    color: $rojin-text-body;
+    color: $rojin-ink;
   }
 
   &__sub {
     margin: 0;
-    font-family: $rojin-font-brand;
+    font-family: $rojin-font-body;
     font-size: 13px;
     color: $rojin-text-meta;
   }
@@ -480,25 +417,32 @@ width: 100%;
   display: flex;
   flex-direction: column;
   gap: 2px; // tight by default; group starts add the larger gap below
-  font-family: $rojin-font-brand;
   flex: 1;
   min-height: 0;
 }
 
 .date-separator {
   align-self: center;
-  margin: 10px 0 6px;
-  font-family: $rojin-font-brand;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 14px 0 10px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: $rojin-line;
+  }
 
   span {
-    display: inline-block;
-    padding: 3px 12px;
-    border-radius: 999px;
-    background: $rojin-bg-search;
-    color: $rojin-text-muted;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-family: $rojin-font-accent;
+    font-style: italic;
+    color: $rojin-ink-soft;
+    font-size: 13px;
+    letter-spacing: 0.01em;
   }
 }
 
@@ -521,10 +465,16 @@ width: 100%;
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .message-row {
+    animation: rojin-pop-in $rojin-dur-base $rojin-ease-emphasis both;
+  }
+}
+
 .message-bubble {
   max-width: min(85%, 32rem);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: $rojin-radius-md;
+  padding: 11px 14px;
   box-sizing: border-box;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -533,19 +483,22 @@ width: 100%;
     white-space: pre-wrap;
     line-height: 1.45;
     font-size: 14px;
+    font-family: $rojin-font-body;
   }
 
   &__meta {
     font-size: 11px;
     color: $rojin-text-meta;
-    margin-top: 8px;
+    margin-top: 7px;
     line-height: 1.2;
+    font-family: $rojin-font-body;
   }
 
   &--received {
-    background: $rojin-bg-elevated;
-    color: $rojin-text-body;
+    background: $rojin-paper;
+    color: $rojin-ink;
     border: 1px solid $rojin-bubble-received-border;
+    border-bottom-left-radius: 5px;
     box-shadow: 0 1px 3px $rojin-bubble-received-shadow;
 
     .message-bubble__meta {
@@ -557,29 +510,30 @@ width: 100%;
     background-color: $rojin-primary;
     color: $rojin-text-on-brand;
     border: 1px solid $rojin-primary;
-    box-shadow: 0 2px 6px $rojin-bubble-sent-shadow;
+    border-bottom-right-radius: 5px;
+    box-shadow: 0 4px 14px $rojin-bubble-sent-shadow;
 
     .message-bubble__meta {
       text-align: right;
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(247, 242, 232, 0.78);
     }
   }
 }
 
-/* Style the message input container */
+// --- Composer --------------------------------------------------------------
 .message-input {
   display: flex;
   align-items: flex-end;
-  margin: 16px 9px;
-margin-bottom: 0px !important;
-  border-radius: 10px;
-  // margin-right: 8px;
-  border: 1px solid $rojin-border;
-  background: $rojin-bg-elevated;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  gap: 10px;
+  margin: 14px 14px 0;
+  padding: 6px 6px 6px 10px;
+  border-radius: $rojin-radius-md;
+  border: 1px solid $rojin-line;
+  background: $rojin-paper;
+  transition: border-color $rojin-dur-fast $rojin-ease, box-shadow $rojin-dur-fast $rojin-ease;
 
   &:focus-within {
-    border-color: $rojin-primary;
+    border-color: $rojin-gold;
     box-shadow: 0 0 0 3px $rojin-focus-ring;
   }
 }
@@ -588,42 +542,53 @@ margin-bottom: 0px !important;
   flex: 1;
   min-height: 44px;
   max-height: 120px;
-  padding: 11px 8px;
-  margin-right: 8px;
+  padding: 11px 6px;
   border: none;
+  background: transparent;
   resize: none;
   overflow-y: auto;
-  font-family: inherit;
+  font-family: $rojin-font-body;
   font-size: 14px;
   line-height: 1.4;
+  color: $rojin-ink;
   box-sizing: border-box;
 }
 
-/* Style the send button */
 .message-input button {
   min-height: 44px;
   padding: 0 24px;
-  border-radius: 8px;
-  background-color: $rojin-primary;
-  color: $rojin-text-on-brand;
+  border-radius: $rojin-radius-sm;
+  background-color: $rojin-gold;
+  color: #2b1a06;
+  font-family: $rojin-font-body;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background-color 0.15s ease, filter 0.15s ease;
+  box-shadow: 0 4px 14px rgba(176, 141, 87, 0.35);
+  transition: filter $rojin-dur-fast $rojin-ease, transform $rojin-dur-fast $rojin-ease;
 
   &:hover:not(:disabled) {
-    background-color: $rojin-primary-soft;
+    filter: brightness(1.04);
   }
 
-  &:active:not(:disabled) {
-    filter: brightness(0.92);
+  &:disabled {
+    background-color: rgba(176, 141, 87, 0.45);
+    box-shadow: none;
+    cursor: default;
   }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .message-input button:active:not(:disabled) {
+    animation: rojin-send-flight $rojin-dur-base $rojin-ease;
+  }
+}
+
 input:focus,
 .message-input__field:focus {
-    outline: none !important;
-    // border:1px solid red;
-    // box-shadow: 0 0 10px #719ECE;
-
+  outline: none !important;
 }
+
 @media only screen and (max-width: $rojin-breakpoint-mobile) {
   .chat-toolbar .chat-toolbar__user {
     max-width: min(52vw, 160px);
@@ -689,7 +654,7 @@ input:focus,
     min-height: 120px;
     max-height: none;
     margin-top: 0;
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 $rojin-radius-sm $rojin-radius-sm;
   }
 
   .chat-users-list .mat-mdc-list-item {
@@ -700,20 +665,20 @@ input:focus,
   }
 
   .message-input {
-    margin-left: max(8px, env(safe-area-inset-left));
-    margin-right: max(8px, env(safe-area-inset-right));
-    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    margin-left: max(10px, env(safe-area-inset-left));
+    margin-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
     align-items: flex-end;
   }
 
   .message-input__field {
     font-size: 16px;
-    padding: 12px 10px;
+    padding: 12px 8px;
     min-height: 48px;
   }
 
   .message-input button {
-    padding: 10px 14px;
+    padding: 10px 18px;
     align-self: stretch;
     min-height: 48px;
   }
