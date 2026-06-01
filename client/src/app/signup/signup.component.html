@@ -1,39 +1,38 @@
-<div class="signup-form">
-  <div class="signup-branding">
-    <p class="signup-title">Rojin</p>
-    <p class="signup-tagline">The org chat</p>
-    <p class="signup-subtitle">Create your account</p>
-  </div>
+<div class="auth">
+  <div class="auth__card">
+    <aside class="auth__hero">
+      <p class="auth__brand">Rojin<span aria-hidden="true">.</span></p>
+      <p class="auth__tag">Conversations worth keeping.</p>
+      <span class="auth__rule" aria-hidden="true"></span>
+    </aside>
 
-  <div class="signup-content">
-    <mat-toolbar class="signup-toolbar">Sign up to register your account</mat-toolbar>
-    <mat-card>
-      <form [formGroup]="signUpForm" (ngSubmit)="onSubmit()">
-        <mat-form-field>
+    <div class="auth__body">
+      <h1 class="auth__heading">Create your account</h1>
+      <p class="auth__sub">Join your workspace on Rojin.</p>
+
+      <form [formGroup]="signUpForm" (ngSubmit)="onSubmit()" class="auth__form">
+        <mat-form-field appearance="outline">
           <mat-label>Username</mat-label>
-          <input matInput type="text" id="username" formControlName="username" />
+          <input matInput type="text" id="username" formControlName="username" autocomplete="username" />
           @if (signUpForm.get('username')?.hasError('required')) {
-            <mat-error>* Username is required
-            </mat-error>
+            <mat-error>Username is required</mat-error>
           }
         </mat-form-field>
-        <mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>Password</mat-label>
-          <input matInput type="password" id="password" formControlName="password" />
+          <input matInput type="password" id="password" formControlName="password" autocomplete="new-password" />
           @if (signUpForm.get('password')?.hasError('required')) {
-            <mat-error>* Password is required
-            </mat-error>
+            <mat-error>Password is required</mat-error>
           }
         </mat-form-field>
-        <div>
-          <button type="submit" mat-raised-button color="primary" type="submit" [disabled]="!signUpForm.valid">
-            Sign up
-          </button>
-        </div>
-        <div class="go-to-signin-section">
-          Already registered? <a routerLink="/signin" class="go-to-signin-text">Sign in </a>
-        </div>
+
+        <button type="submit" mat-raised-button color="primary" class="auth__cta" [disabled]="!signUpForm.valid">
+          Sign up
+        </button>
+
+        <p class="auth__alt">Already registered? <a routerLink="/signin">Sign in</a></p>
       </form>
-    </mat-card>
+    </div>
   </div>
 </div>

@@ -1,0 +1,161 @@
+// ---------------------------------------------------------------------------
+// Shared "Aubergine Atelier" auth styling — consumed by sign-in & sign-up.
+// Component SCSS does: @import '../ui/styles/tokens'; @import '../ui/styles/auth';
+// ---------------------------------------------------------------------------
+@import 'tokens';
+
+:host {
+  display: block;
+}
+
+.auth {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 40px);
+}
+
+.auth__card {
+  width: min(880px, 100%);
+  display: grid;
+  grid-template-columns: 0.92fr 1.08fr;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-radius: $rojin-radius-lg;
+  box-shadow: $rojin-shadow-card;
+  overflow: hidden;
+
+  @media (max-width: $rojin-breakpoint-mobile) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// --- Hero panel (plum) -----------------------------------------------------
+.auth__hero {
+  position: relative;
+  background: $rojin-primary;
+  color: $rojin-text-on-brand;
+  padding: clamp(28px, 4vw, 44px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 240px;
+  // faint inner glow to give the plum some depth
+  background-image: radial-gradient(120% 80% at 0% 0%, rgba(176, 141, 87, 0.18), transparent 60%);
+}
+
+.auth__brand {
+  font-family: $rojin-font-display;
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 38px);
+  letter-spacing: 0.01em;
+  margin: 0;
+
+  span {
+    color: $rojin-gold;
+  }
+}
+
+.auth__tag {
+  font-family: $rojin-font-accent;
+  font-style: italic;
+  font-size: 15px;
+  color: rgba(247, 242, 232, 0.82);
+  margin: 0;
+}
+
+.auth__rule {
+  display: block;
+  width: 46px;
+  height: 2px;
+  background: $rojin-gold;
+  border-radius: 2px;
+  margin-top: 6px;
+  transform-origin: left center;
+}
+
+// --- Form panel (paper) ----------------------------------------------------
+.auth__body {
+  padding: clamp(28px, 4vw, 44px);
+  display: flex;
+  flex-direction: column;
+}
+
+.auth__heading {
+  font-family: $rojin-font-display;
+  font-weight: 400;
+  font-size: 24px;
+  color: $rojin-ink;
+  margin: 0 0 4px;
+}
+
+.auth__sub {
+  font-family: $rojin-font-body;
+  font-size: 14px;
+  color: $rojin-ink-soft;
+  margin: 0 0 22px;
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  mat-form-field {
+    width: 100%;
+    display: block;
+  }
+}
+
+.auth__cta {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 8px;
+  font-family: $rojin-font-body;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.auth__alt {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 13.5px;
+  color: $rojin-ink-soft;
+
+  a {
+    color: $rojin-primary;
+    font-weight: 700;
+    text-decoration: none;
+    border-bottom: 1px solid $rojin-gold-soft;
+    transition: border-color $rojin-dur-fast $rojin-ease;
+
+    &:hover {
+      border-bottom-color: $rojin-gold;
+    }
+  }
+}
+
+// --- Motion (refined load + signature hairline draw) -----------------------
+@media (prefers-reduced-motion: no-preference) {
+  .auth__card { animation: rojin-fade-rise $rojin-dur-base $rojin-ease both; }
+  .auth__brand { animation: rojin-fade-rise $rojin-dur-base $rojin-ease 60ms both; }
+  .auth__tag   { animation: rojin-fade-rise $rojin-dur-base $rojin-ease 140ms both; }
+  .auth__rule  { animation: rojin-hairline-draw $rojin-dur-slow $rojin-ease 260ms both; }
+
+  .auth__heading,
+  .auth__sub,
+  .auth__form mat-form-field,
+  .auth__cta,
+  .auth__alt {
+    animation: rojin-fade-rise $rojin-dur-base $rojin-ease both;
+  }
+  .auth__heading { animation-delay: 120ms; }
+  .auth__sub     { animation-delay: 170ms; }
+  .auth__form mat-form-field:nth-of-type(1) { animation-delay: 220ms; }
+  .auth__form mat-form-field:nth-of-type(2) { animation-delay: 280ms; }
+  .auth__cta { animation-delay: 340ms; }
+  .auth__alt { animation-delay: 400ms; }
+}

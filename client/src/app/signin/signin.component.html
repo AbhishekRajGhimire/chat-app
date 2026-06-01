@@ -1,39 +1,38 @@
-<div class="signin-form">
-  <div class="signin-branding">
-    <p class="signin-title">Welcome to Rojin</p>
-    <p class="signin-tagline">The org chat</p>
-  </div>
+<div class="auth">
+  <div class="auth__card">
+    <aside class="auth__hero">
+      <p class="auth__brand">Rojin<span aria-hidden="true">.</span></p>
+      <p class="auth__tag">Conversations worth keeping.</p>
+      <span class="auth__rule" aria-hidden="true"></span>
+    </aside>
 
-  <div class="signin-content">
-    <mat-toolbar class="signin-toolbar">Sign in to your account</mat-toolbar>
-    <mat-card>
-      <form [formGroup]="signInForm" (ngSubmit)="onSubmit()">
-        <mat-form-field>
+    <div class="auth__body">
+      <h1 class="auth__heading">Welcome back</h1>
+      <p class="auth__sub">Sign in to your account.</p>
+
+      <form [formGroup]="signInForm" (ngSubmit)="onSubmit()" class="auth__form">
+        <mat-form-field appearance="outline">
           <mat-label>Username</mat-label>
-          <input matInput type="text" id="username" formControlName="username" />
+          <input matInput type="text" id="username" formControlName="username" autocomplete="username" />
           @if (signInForm.get('username')?.hasError('required')) {
-            <mat-error>* Username is required
-            </mat-error>
+            <mat-error>Username is required</mat-error>
           }
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Password</mat-label>
-          <input matInput type="password" id="password" formControlName="password" />
-          @if (signInForm.get('password')?.hasError('required')) {
-            <mat-error>* Password is required
-            </mat-error>
-          }
-        </mat-form-field>
-        <div>
-          <button type="submit" mat-raised-button color="primary" type="submit" [disabled]="!signInForm.valid">
-            Sign in
-          </button>
-        </div>
-        <div class="go-to-signup-section">
-          New here? <a routerLink="/signup" class="go-to-signup-text">Sign up </a>
-        </div>
 
+        <mat-form-field appearance="outline">
+          <mat-label>Password</mat-label>
+          <input matInput type="password" id="password" formControlName="password" autocomplete="current-password" />
+          @if (signInForm.get('password')?.hasError('required')) {
+            <mat-error>Password is required</mat-error>
+          }
+        </mat-form-field>
+
+        <button type="submit" mat-raised-button color="primary" class="auth__cta" [disabled]="!signInForm.valid">
+          Sign in
+        </button>
+
+        <p class="auth__alt">New to Rojin? <a routerLink="/signup">Create an account</a></p>
       </form>
-    </mat-card>
+    </div>
   </div>
 </div>
