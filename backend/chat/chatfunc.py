@@ -168,8 +168,14 @@ def get_chats_history():
 
     cursor.execute(
         """
-        SELECT DISTINCT u.username,
-            COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name
+        SELECT u.username,
+            COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name,
+            (SELECT m.body FROM Message m
+             WHERE m.conversation_id = c.id
+             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message,
+            (SELECT m.created_at FROM Message m
+             WHERE m.conversation_id = c.id
+             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at
         FROM Conversation c
         JOIN ConversationMember ms ON ms.conversation_id = c.id AND ms.user_id = ?
         JOIN ConversationMember mp ON mp.conversation_id = c.id AND mp.user_id != ms.user_id
@@ -179,8 +185,21 @@ def get_chats_history():
         """,
         (me_id,),
     )
-    peers = [{"username": r[0], "display_name": r[1]} for r in cursor.fetchall()]
-    self_entry = {"username": me_name, "display_name": self_display}
+    peers = [
+        {
+            "username": r[0],
+            "display_name": r[1],
+            "last_message": r[2],
+            "last_message_at": r[3],
+        }
+        for r in cursor.fetchall()
+    ]
+    self_entry = {
+        "username": me_name,
+        "display_name": self_display,
+        "last_message": None,
+        "last_message_at": None,
+    }
     combined = peers + [self_entry]
     combined.sort(key=lambda e: e["display_name"].lower())
     return jsonify(combined)
@@ -271,3 +290,16 @@ def handle_message(data):
         recipientsid = data.get("recipientsid")
         if recipientsid:
             emit("receive_message", payload, room=recipientsid)
+
+
+@socketio.on("typing")
+def handle_typing(data):
+    # Sender identity comes only from the socket session (same trust model as
+    # send_message). The event carries no message content.
+    sender = socket_user_by_sid.get(request.sid)
+    if not sender:
+        return
+    data = data or {}
+    recipient = data.get("recipient")
+    if isinstance(recipient, str) and recipient.strip():
+        emit("peer_typing", {"from": sender}, room=recipient.strip())
