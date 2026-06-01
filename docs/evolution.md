@@ -85,6 +85,8 @@ This is **optional hardening** for office Wi‑Fi; HTTP on a trusted LAN remains
 
 > **Now also a blocker for two features:** the **PWA service worker** and **Web Push** both require a **secure context**. So HTTPS is the prerequisite that unlocks **installing Rojin on a phone** and **push notifications** off `localhost`.
 
+> **Delivered (testing harness):** `deployment/serve-https.ps1` + `deployment/Caddyfile` serve the built PWA at **`https://Avi.local`** via **Caddy + mkcert**, proxying `/api` + `/socket.io` to Flask — enough to install the PWA on a phone and (next) build Web Push. See [`deployment/https-tls.md`](../deployment/https-tls.md). A full reverse-proxy production deployment (real domain/cert, process manager) remains optional, as above.
+
 ---
 
 ## PWA & notifications

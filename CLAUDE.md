@@ -54,6 +54,9 @@ On every push and PR, two parallel jobs must pass: **backend** (`pytest -q`) and
 ### PWA
 The client is an installable PWA via **`@angular/pwa`** (ngsw). The **service worker only runs in production builds** (`npm run build`), never under `ng serve`. It also needs a **secure context** — works on `localhost`; **LAN phone install requires HTTPS** (roadmap). The web app manifest + icons live in **`client/public/`** (wired into `angular.json` assets); the chat-bubble icon is authored as `public/icons/icon.svg` and rasterized to PNGs with **`node scripts/build-icons.mjs`** (needs the `sharp` dev dep). `ngsw-config.json` prefetches the app shell and lazy-caches images/fonts; **`/api` and `/socket.io` are never cached**. To test: `npm run build` then serve `dist/client` over `localhost`.
 
+### LAN HTTPS harness (optional, for phone/PWA testing)
+`deployment/serve-https.ps1` builds the client and runs **Caddy + mkcert** to serve the **production** PWA at **`https://Avi.local`**, proxying `/api` + `/socket.io` to Flask — this is what lets the service worker register and the app install on a phone (a SW needs a *trusted* secure context). It's **separate from `ng serve`** and fully reversible; first run needs an **Administrator** shell (mkcert CA install + 443 firewall rule). mkcert certs live in `deployment/certs/` (gitignored). Full guide: `deployment/https-tls.md`.
+
 ### Environment knobs (`backend/.env`)
 `SECRET_KEY`, `JWT_SECRET_KEY`, `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`.
 

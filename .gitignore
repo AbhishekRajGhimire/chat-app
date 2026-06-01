@@ -45,3 +45,6 @@ docs/personal-notes.md
 # --- Superpowers brainstorm scratch ---
 .superpowers/
 
+# --- LAN HTTPS certs (mkcert; never commit private keys) ---
+deployment/certs/
+

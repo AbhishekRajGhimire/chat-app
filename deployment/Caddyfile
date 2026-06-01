@@ -1,0 +1,13 @@
+Avi.local, localhost {
+	tls deployment/certs/avi.local.pem deployment/certs/avi.local-key.pem
+
+	# API + realtime → Flask (Caddy auto-upgrades WebSockets)
+	@backend path /api/* /socket.io/*
+	reverse_proxy @backend localhost:3000
+
+	# Built SPA + deep-link fallback
+	root * client/dist/client
+	try_files {path} /index.html
+	file_server
+	encode gzip
+}
