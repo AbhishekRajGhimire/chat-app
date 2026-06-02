@@ -92,7 +92,7 @@ This is **optional hardening** for office Wi‑Fi; HTTP on a trusted LAN remains
 ## PWA & notifications
 
 - **PWA shell — delivered.** The client is installable via `@angular/pwa` (ngsw): web app manifest (charcoal theme, chat-bubble icon), app-shell prefetch caching, `/api` + `/socket.io` never cached. Works on `localhost` today; **phone install needs the HTTPS step above** (service workers require a secure context).
-- **Web Push — planned (next).** True notifications when the app is closed: VAPID keys, push subscriptions stored per user, a service-worker `push` handler, and the Flask backend sending pushes (e.g. `pywebpush`) on new messages. Also requires HTTPS.
+- **Web Push — delivered.** True notifications when the app is closed: VAPID keys, a `PushSubscription` table per user, a custom service worker (`public/sw-custom.js`) wrapping ngsw with focus-aware push + click-to-open, and the Flask backend sending pushes via `pywebpush` on new DM + group messages (opt-in via the Profile toggle). Requires the HTTPS harness to test on a device. **This completes the Notifications + PWA arc.**
 
 ---
 

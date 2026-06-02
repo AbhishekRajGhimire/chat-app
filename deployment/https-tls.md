@@ -86,7 +86,13 @@ The phone must trust mkcert's local CA, or the browser won't register the servic
 | Login / messages fail | Backend isn't running on `:3000` (Terminal 1). |
 | `mkcert -install` fails | Run the harness from an **Administrator** PowerShell the first time. |
 
-## Why this unblocks more than install
+## Testing Web Push
 
-A trusted secure context is also a hard requirement for **Web Push** (the next feature).
-Once this harness works, push notifications can be built on top of the same setup.
+Push needs this same trusted secure context. With the harness running and the CA
+trusted on the phone:
+1. Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` in `backend/.env`
+   (generate a keypair once — see `backend/.env.example`).
+2. Open `https://Avi.local` on the phone, **install** the PWA (iOS *requires* install
+   for push), then Profile → **Enable notifications** → allow.
+3. From another account, send a message → a banner appears when you're not focused on
+   that chat; tapping it opens the conversation.

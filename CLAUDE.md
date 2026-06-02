@@ -57,8 +57,11 @@ The client is an installable PWA via **`@angular/pwa`** (ngsw). The **service wo
 ### LAN HTTPS harness (optional, for phone/PWA testing)
 `deployment/serve-https.ps1` builds the client and runs **Caddy + mkcert** to serve the **production** PWA at **`https://Avi.local`**, proxying `/api` + `/socket.io` to Flask — this is what lets the service worker register and the app install on a phone (a SW needs a *trusted* secure context). It's **separate from `ng serve`** and fully reversible; first run needs an **Administrator** shell (mkcert CA install + 443 firewall rule). mkcert certs live in `deployment/certs/` (gitignored). Full guide: `deployment/https-tls.md`.
 
+### Web Push notifications
+Opt-in push (toggle in **Profile**) via VAPID + `pywebpush`. Backend: `chat/push.py` (`/api/push/vapid-key|subscribe|unsubscribe` + `send_push_to_user`, hooked into DM + group message sends), a `PushSubscription` table, and `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` env (push disabled if unset). Client: a **custom service worker** `public/sw-custom.js` (registered instead of `ngsw-worker.js`) that `importScripts('ngsw-worker.js')` and adds focus-aware push display + click-to-open. Payloads omit a top-level `notification` key so ngsw doesn't double-show. **Only testable on a device via the HTTPS harness** (push needs a secure context; iOS needs the PWA installed).
+
 ### Environment knobs (`backend/.env`)
-`SECRET_KEY`, `JWT_SECRET_KEY`, `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`.
+`SECRET_KEY`, `JWT_SECRET_KEY`, `JWT_ACCESS_TOKEN_DAYS` (default 7; `0` disables expiry — dev only), `CORS_ORIGINS` (comma-separated allow-list; unset → `*`), `HOST`, `PORT`, `FLASK_DEBUG`, and `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (Web Push; push disabled if unset).
 
 **Secrets are fail-fast.** `FLASK_DEBUG` defaults to **false**. When debug is off, `chat/__init__.py` **refuses to start** unless both `SECRET_KEY` and `JWT_SECRET_KEY` are set — the committed dev fallbacks apply only when `FLASK_DEBUG=true`. So a real/LAN run can't silently sign JWTs with a repo-known secret, and the dev "just run it" path still works once you set `FLASK_DEBUG=true` locally. Rotating `JWT_SECRET_KEY` invalidates all live tokens (one re-login per user; `chat.db` data is untouched).
 
