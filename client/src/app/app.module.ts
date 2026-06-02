@@ -9,6 +9,7 @@ import { SignupComponent } from './signup/signup.component';
 import { ChatComponent } from './chat/chat.component';
 import { GroupCreateDialogComponent } from './chat/group-create-dialog/group-create-dialog.component';
 import { ProfileComponent } from './profile/profile.component';
+import { ShellRedirectComponent } from './shell-redirect/shell-redirect.component';
 import { UiModule } from './ui/ui.module';
 import { SharedChatModule } from './chat/shared-chat.module';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
@@ -32,6 +33,7 @@ import { ServiceWorkerModule } from '@angular/service-worker';
         ChatComponent,
         GroupCreateDialogComponent,
         ProfileComponent,
+        ShellRedirectComponent,
     ],
     bootstrap: [AppComponent], imports: [BrowserModule,
         AppRoutingModule,
