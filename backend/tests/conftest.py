@@ -30,7 +30,7 @@ def client(app):
 def clean_db():
     """Wipe all rows between tests (single shared connection → must isolate)."""
     yield
-    for table in ("Message", "ConversationMember", "Conversation", "UserProfile", "User"):
+    for table in ("MessageReaction", "Message", "ConversationMember", "Conversation", "UserProfile", "User"):
         cursor.execute(f"DELETE FROM {table}")
     connection.commit()
 

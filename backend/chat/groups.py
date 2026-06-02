@@ -15,6 +15,7 @@ from .conversations import (
     mark_read,
     read_state,
     remove_group_member,
+    serialize_messages,
 )
 from .database import connection, cursor
 from .push import send_push_to_user
@@ -173,21 +174,10 @@ def mark_group_read(cid):
 @app.route("/api/groups/<int:cid>/messages", methods=["GET"])
 @jwt_required()
 def get_group_messages(cid):
-    _, err = _require_member(cid)
+    uid, err = _require_member(cid)
     if err:
         return err
-    cursor.execute(
-        """
-        SELECT u.username, m.body, m.created_at
-        FROM Message m
-        JOIN User u ON u.id = m.sender_user_id
-        WHERE m.conversation_id = ?
-        ORDER BY m.created_at, m.id
-        """,
-        (cid,),
-    )
-    messages = [{"from": r[0], "message": r[1], "datetime": r[2]} for r in cursor.fetchall()]
-    return jsonify({"messages": messages, "read_state": read_state(cid)})
+    return jsonify({"messages": serialize_messages(cid, uid), "read_state": read_state(cid)})
 
 
 @app.route("/api/groups/<int:cid>/messages", methods=["POST"])
@@ -202,10 +192,15 @@ def post_group_message(cid):
         return jsonify({"error": "body required"}), 400
     body = body.strip()
     now = _utc_now_iso()
+    cmid = data.get("client_message_id")
+    cmid = cmid.strip() if isinstance(cmid, str) and cmid.strip() else None
+    reply_to = data.get("reply_to")
+    reply_to = reply_to.strip() if isinstance(reply_to, str) and reply_to.strip() else None
     cursor.execute(
-        "INSERT INTO Message (conversation_id, sender_user_id, body, created_at) "
-        "VALUES (?, ?, ?, ?)",
-        (cid, uid, body, now),
+        "INSERT INTO Message "
+        "(conversation_id, sender_user_id, body, created_at, client_message_id, reply_to) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (cid, uid, body, now, cmid, reply_to),
     )
     connection.commit()
     # Persistence only; live delivery is the socket send_message path
@@ -225,4 +220,4 @@ def post_group_message(cid):
                     "kind": "group",
                     "url": "/",
                 })
-    return jsonify({"message": "ok", "datetime": now}), 201
+    return jsonify({"message": "ok", "datetime": now, "client_message_id": cmid}), 201
