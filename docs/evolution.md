@@ -67,6 +67,16 @@ Delivery rides the per-conversation room (`conv:<id>`) that both DM participants
 
 ---
 
+## Native mobile UI — delivered
+
+The Angular client is now structured in three explicit layers: a **transport SDK** (`ChatApi` for REST, `RealtimeClient` for Socket.IO streams), a **signal store** (`ChatStore`) that owns all state, business rules, and the single app-lifetime socket, and thin **presentation shells** that are pure views over store signals.
+
+A **lazy-loaded `ChatMobileModule`** serves the phone form-factor at `/m` with a native-style full-screen list↔thread flow, a bottom tab bar (**Chats / Calls / People**), and Profile as a pushed screen from the top-bar avatar. The root route auto-redirects by viewport (`ShellRedirectComponent`). Four touch gestures are implemented via `GesturesModule`: swipe-back, swipe-to-reply, pull-to-refresh, and long-press. The desktop shell (`/chat`) is unchanged and shares `<app-message-thread>` with mobile.
+
+The Calls tab is a placeholder today; **video calling** (WebRTC + Socket.IO signaling) is the next feature that will fill it — see below.
+
+---
+
 ## Video calling (planned — placeholder in UI today)
 
 A disabled **"🎥 Call — coming soon"** control already sits in the conversation header (both DMs and groups) so the seam exists. The intended implementation, as its own future sub-project:
