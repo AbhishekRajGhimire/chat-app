@@ -1,0 +1,57 @@
+<header class="m-top">
+  <h1 class="m-top__title">People</h1>
+  <a routerLink="/m/profile" class="m-top__me" aria-label="Profile">
+    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [size]="32"></app-avatar>
+  </a>
+</header>
+
+<div class="m-search">
+  <div class="m-search__wrap">
+    <mat-icon class="m-search__icon">search</mat-icon>
+    <input
+      class="m-search__input"
+      type="search"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      placeholder="Search people"
+      [(ngModel)]="search"
+      (input)="apply()"
+    />
+  </div>
+</div>
+
+<div class="m-list">
+  @if (!loaded) {
+    <div class="m-empty">
+      <span class="m-empty__text">Loading…</span>
+    </div>
+  } @else if (filtered.length === 0 && search.trim()) {
+    <div class="m-empty">
+      <span class="m-empty__text">No matches for "{{ search.trim() }}"</span>
+    </div>
+  } @else if (filtered.length === 0) {
+    <div class="m-empty">
+      <span class="m-empty__text">No one else is here yet</span>
+    </div>
+  } @else {
+    @for (u of filtered; track u.username) {
+      <button type="button" class="m-row" (click)="openDm(u)">
+        <span class="m-row__av">
+          <app-avatar [name]="u.display_name" [seed]="u.username" [size]="46"></app-avatar>
+          @if (store.isOnline(u.username)) {
+            <span class="m-row__dot"></span>
+          }
+        </span>
+        <span class="m-row__body">
+          <span class="m-row__name">{{ u.display_name || u.username }}</span>
+          @if (u.display_name && u.display_name !== u.username) {
+            <span class="m-row__handle">&#64;{{ u.username }}</span>
+          }
+        </span>
+        <mat-icon class="m-row__chevron">chevron_right</mat-icon>
+      </button>
+    }
+  }
+</div>

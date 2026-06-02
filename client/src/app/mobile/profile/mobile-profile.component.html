@@ -1,0 +1,67 @@
+<header class="m-top">
+  <button type="button" class="m-top__back" (click)="goBack()" aria-label="Back">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <h1 class="m-top__title">Profile</h1>
+  <span class="m-top__spacer" aria-hidden="true"></span>
+</header>
+
+<div class="m-body">
+  @if (loading) {
+    <div class="m-loading">
+      <span class="m-loading__text">Loading…</span>
+    </div>
+  } @else {
+    <section class="m-avatar-section">
+      <app-avatar [name]="displayName || username" [seed]="username" [size]="72"></app-avatar>
+      <span class="m-avatar-section__name">{{ displayName || username }}</span>
+      <span class="m-avatar-section__handle">&#64;{{ username }}</span>
+    </section>
+
+    @if (errorMessage) {
+      <div class="m-error" role="alert">{{ errorMessage }}</div>
+    }
+
+    <form class="m-form" (ngSubmit)="save()" novalidate>
+      <div class="m-field">
+        <label class="m-field__label" for="mp-display-name">Display name</label>
+        <input
+          id="mp-display-name"
+          class="m-field__input"
+          type="text"
+          [(ngModel)]="displayName"
+          name="displayName"
+          maxlength="120"
+          autocomplete="off"
+          placeholder="{{ username }}"
+        />
+      </div>
+
+      <div class="m-field">
+        <label class="m-field__label" for="mp-bio">Bio</label>
+        <textarea
+          id="mp-bio"
+          class="m-field__textarea"
+          [(ngModel)]="bio"
+          name="bio"
+          maxlength="2000"
+          rows="4"
+          placeholder="A little about you"
+        ></textarea>
+      </div>
+
+      <button type="submit" class="m-btn m-btn--save" [disabled]="saving">
+        {{ saving ? 'Saving…' : 'Save' }}
+      </button>
+    </form>
+
+    <div class="m-notif-note">Notification settings available on desktop.</div>
+  }
+</div>
+
+<div class="m-footer">
+  <button type="button" class="m-btn m-btn--logout" (click)="logout()">
+    <mat-icon class="m-btn__icon">logout</mat-icon>
+    Sign out
+  </button>
+</div>

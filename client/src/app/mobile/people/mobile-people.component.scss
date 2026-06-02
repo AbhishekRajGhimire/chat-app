@@ -1,0 +1,203 @@
+@import '../../ui/styles/tokens';
+
+// ─── Host ────────────────────────────────────────────────────────────────────
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: $rojin-canvas;
+}
+
+// ─── Top bar ─────────────────────────────────────────────────────────────────
+.m-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-bottom: 12px;
+  padding-inline: 18px;
+  background: $rojin-chrome;
+  border-bottom: 1px solid $rojin-line;
+  flex-shrink: 0;
+  z-index: 2;
+
+  &__title {
+    font-family: $rojin-font-display;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: $rojin-canvas;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  &__me {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: opacity $rojin-dur-fast $rojin-ease;
+    flex-shrink: 0;
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+}
+
+// ─── Search bar ──────────────────────────────────────────────────────────────
+.m-search {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  background: $rojin-chrome;
+  border-bottom: 1px solid $rojin-line;
+
+  &__wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(247, 242, 232, 0.10);
+    border: 1px solid rgba(247, 242, 232, 0.16);
+    border-radius: $rojin-radius-md;
+    padding: 8px 12px;
+  }
+
+  &__icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: $rojin-ink-soft;
+    flex-shrink: 0;
+    color: rgba(247, 242, 232, 0.5);
+  }
+
+  &__input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: $rojin-font-body;
+    font-size: 15px;
+    color: $rojin-canvas;
+    line-height: 1.3;
+
+    &::placeholder {
+      color: rgba(247, 242, 232, 0.45);
+    }
+
+    // Remove the native search-clear button on webkit
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+// ─── Scrollable list ─────────────────────────────────────────────────────────
+.m-list {
+  flex: 1;
+  overflow-y: auto;
+  background: $rojin-canvas;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+.m-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+
+  &__text {
+    font-family: $rojin-font-body;
+    font-size: 14px;
+    color: $rojin-ink-soft;
+    text-align: center;
+  }
+}
+
+// ─── Row ─────────────────────────────────────────────────────────────────────
+.m-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid $rojin-line;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background $rojin-dur-fast $rojin-ease;
+
+  &:active {
+    background: rgba(176, 141, 87, 0.08);
+  }
+
+  // Avatar wrapper
+  &__av {
+    position: relative;
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Online presence dot
+  &__dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: $rojin-gold;
+    border: 2px solid $rojin-canvas;
+    box-shadow: 0 0 0 1px rgba(176, 141, 87, 0.4);
+  }
+
+  // Text content block
+  &__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-family: $rojin-font-body;
+    font-size: 15px;
+    font-weight: 600;
+    color: $rojin-ink;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__handle {
+    font-family: $rojin-font-body;
+    font-size: 12px;
+    color: $rojin-ink-soft;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__chevron {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: $rojin-line;
+  }
+}

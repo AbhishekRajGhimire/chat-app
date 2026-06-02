@@ -125,6 +125,16 @@ Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message`
 | POST | `/api/dm/messages` | Yes | JSON `{ to_username, body }`; sender from JWT |
 | GET/PATCH | `/api/me/profile` | Yes | Current user profile |
 | GET | `/api/users/<username>/profile` | Yes | Another user’s public profile card |
+| POST | `/api/messages/<id>/react` | Yes | Toggle emoji reaction on a message (keyed by `client_message_id`) |
+| PATCH | `/api/messages/<id>` | Yes | Edit message body (owner only); sets `edited_at` |
+| DELETE | `/api/messages/<id>` | Yes | Soft-delete message (owner only); sets `deleted_at` |
+| GET | `/api/groups` | Yes | List groups the caller belongs to |
+| POST | `/api/groups` | Yes | Create group `{ title, member_usernames }` |
+| GET | `/api/groups/<id>/members` | Yes | List group members |
+| POST | `/api/groups/<id>/members` | Yes | Add member to group |
+| DELETE | `/api/groups/<id>/members/<username>` | Yes | Remove member from group |
+| GET | `/api/groups/<id>/messages` | Yes | Group message history |
+| POST | `/api/groups/<id>/messages` | Yes | Post message to group |
 
 See [`security.md`](./security.md) for LAN configuration (`.env`, CORS allowlist) and remaining hardening ideas.
 
@@ -139,6 +149,9 @@ See [`security.md`](./security.md) for LAN configuration (`.env`, CORS allowlist
 | C → S | `send_message` | `{ recipient, message }` (optional legacy `recipientsid`) | Sender = **socket JWT identity only**; `emit('receive_message', …, room=recipient)` |
 | S → room | `receive_message` | `{ username, message, datetime }` | `username` is the **sender**; client appends to thread keyed by sender |
 | — | `disconnect` | — | Drop **`sid`** binding; clear matching `sid` in `online_users`; broadcast `online_users` |
+| S → conv room | `reaction_updated` | `{ client_message_id, reactions, conversation_id }` | Broadcast to `conv:<id>` room; clients update reaction pills in-place |
+| S → conv room | `message_edited` | `{ client_message_id, body, edited_at, conversation_id }` | Broadcast to `conv:<id>` room; clients update bubble text |
+| S → conv room | `message_deleted` | `{ client_message_id, conversation_id }` | Broadcast to `conv:<id>` room; clients replace bubble with tombstone |
 
 Legacy: server still accepts `recipientsid` instead of `recipient` for older clients. **`join_user`** is removed; presence is established on authenticated **`connect`** only.
 
@@ -190,6 +203,52 @@ Legacy: server still accepts `recipientsid` instead of `recipient` for older cli
 ### Shared `ui/` layer (tokens + shell)
 
 The chat screen composes **`ToolbarShellComponent`** with projected regions: brand slot (**`BrandLockupComponent`**, tagline hidden on narrow widths) and actions (welcome text, profile, logout). That keeps **feature logic** in `ChatComponent` while **chrome and spacing** live in reusable pieces. Global **`html` / `body`** min-height and the chat host use **`100vh` / `100dvh`** and **`-webkit-fill-available`** where needed; **`index.html`** uses **`viewport-fit=cover`** so **`env(safe-area-inset-*)`** applies on supported devices. New screens can import the same tokens and optionally reuse **`UiModule`** exports without duplicating hex values or toolbar markup.
+
+---
+
+## Client architecture (layered)
+
+The Angular client is structured in three layers that separate transport, state, and presentation. The backend REST + Socket.IO API is the **stable contract** — a future native mobile app would re-implement only the transport layer against the same API.
+
+### Layer 1 — Transport / SDK (`client/src/app/core/`)
+
+| File | Role |
+|------|------|
+| `core/chat-api.service.ts` (`ChatApi`) | All REST calls; returns typed Observables; no state held |
+| `core/realtime-client.service.ts` (`RealtimeClient`) | Socket.IO wrapper; exposes typed RxJS streams (`messages$`, `onlineUsers$`, `reactionUpdated$`, …); no business logic |
+| `core/models/` | Shared TypeScript interfaces (`Message`, `Conversation`, `UserProfile`, …) |
+
+Components and the store never import `socket.io-client` or `HttpClient` directly — all backend I/O goes through these two services.
+
+### Layer 2 — State (`ChatStore` signals)
+
+`core/chat-store.service.ts` owns:
+
+- All chat state as Angular **signals** (`conversations`, `activeThread`, `onlineUsers`, …).
+- The **single app-lifetime Socket.IO connection** (connected on sign-in, disconnected on sign-out).
+- Socket-stream subscriptions wrapped in **`NgZone.run()`** so signal writes always trigger change detection.
+- Business rules: optimistic message append, roll-back on HTTP error, reaction toggle, thread switching.
+
+Nothing else manages the socket lifecycle. Components call store methods and read signals; they never subscribe to `RealtimeClient` streams directly.
+
+### Layer 3 — Presentation (shells)
+
+| Route | Module / Component | Notes |
+|-------|--------------------|-------|
+| `''` | `ShellRedirectComponent` | Reads `matchMedia('(max-width:768px)')` and immediately redirects to `/chat` (desktop) or `/m/chats` (phone) |
+| `/chat` | `ChatComponent` | Desktop shell — sidebar + thread pane; eagerly loaded |
+| `/m` | `ChatMobileModule` | **Lazy-loaded**; full-screen native-style phone UI |
+| `/m/chats` | `MobileChatsComponent` | Conversation list |
+| `/m/calls` | `MobileCallsComponent` | Calls tab (placeholder; populated when video calling lands) |
+| `/m/people` | `MobilePeopleComponent` | Directory / people list |
+| `/m/profile` | `MobileProfileComponent` | Pushed screen reached from top-bar avatar |
+| `/m/c/:key` | `MobileThreadComponent` | Full-screen conversation thread |
+
+**`<app-message-thread>`** (`SharedChatModule`) is the shared message-list renderer used by both desktop and mobile. Edit message UI in one place.
+
+**Mobile gestures** (`client/src/app/mobile/gestures/`, `GesturesModule`): swipe-back (thread → list), swipe-to-reply (individual bubble), pull-to-refresh (thread history), long-press (context menu / quick-react).
+
+Auth stays reactive across both shells: a 401/422 from any call navigates to `/signin`; no route guards.
 
 ---
 

@@ -9,7 +9,7 @@
   </ng-container>
 </app-toolbar-shell>
 
-<div class="chats-section" [class.chat-detail-active]="!!selectedKey">
+<div class="chats-section" [class.chat-detail-active]="!!store.selectedKey()">
   <div class="chats-sidebar">
     <div class="sidebar-actions">
       <button mat-raised-button color="primary" class="click-search-button" (click)="showSearch()">
@@ -21,9 +21,9 @@
     </div>
     <h4 class="sidebar-heading">Conversations</h4>
     <mat-list class="chat-users-list">
-      @for (entry of sortedConversations; track entry.key) {
+      @for (entry of store.sortedConversations(); track entry.key) {
         <mat-list-item (click)="selectConversation(entry)"
-          [ngClass]="{ active: selectedKey === entry.key }">
+          [ngClass]="{ active: store.selectedKey() === entry.key }">
           <span class="dm-row" [class.is-unread]="(entry.unreadCount || 0) > 0">
             @if (entry.kind === 'group') {
               <span class="group-mono">{{ monogram(entry.displayName) }}</span>
@@ -53,7 +53,7 @@
   </div>
 
   <div class="chat-and-search-panel">
-    @if (!selectedKey) {
+    @if (!store.selectedKey()) {
       <div class="search-bar-container">
         <div class="search-bar">
           <input matInput class="user-search" [placeholder]="searchPlaceholder"
@@ -98,7 +98,7 @@
           </mat-list>
         </div>
       }
-      @if (selectedKey) {
+      @if (store.selectedKey()) {
         <div class="chat-header">
           <button type="button" mat-icon-button class="chat-back" (click)="backToInbox()" aria-label="Back to inbox">
             <mat-icon>arrow_back</mat-icon>
@@ -154,8 +154,8 @@
           </div>
         }
 
-        <div class="chat-container" #messageScrollHost (click)="closeOverlays()">
-          @let thread = openThread;
+        <div class="chat-container" #messageScrollHost>
+          @let thread = store.openThread();
           @if (!thread.length) {
             <div class="message-thread-empty">
               <span class="message-thread-empty__badge"><mat-icon>waving_hand</mat-icon></span>
@@ -164,121 +164,18 @@
             </div>
           }
           @if (thread.length) {
-            <div class="message-thread">
-              @for (message of thread; track message; let i = $index) {
-                @if (shouldShowDaySeparator(thread, i)) {
-                  <div class="date-separator"><span>{{ daySeparatorLabel(message.datetime) }}</span></div>
-                }
-                @if (showSenderHeader(thread, i)) {
-                  <div class="sender-head">
-                    <app-avatar [name]="message.from" [seed]="message.from" [size]="22"></app-avatar>
-                    <span class="sender-head__name" [style.color]="senderColor(message.from)">{{ message.from }}</span>
-                  </div>
-                }
-                <div
-                  class="message-row"
-                  [attr.id]="message.id ? 'msg-' + message.id : null"
-                  [class.message-row--group-start]="!isContinuation(thread, i)"
-                  [class.message-row--grouped]="isGroupOpen"
-                  [class.message-row--flash]="highlightedId === message.id"
-                  [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
-                  <div class="message-cluster">
-                  <div
-                    class="message-bubble"
-                    [class.message-bubble--failed]="message.status === 'failed'"
-                    [class.message-bubble--deleted]="message.deleted"
-                    [class.message-bubble--active]="activeMsgId === message.id"
-                    (click)="message.id && !message.deleted && toggleActions(message)"
-                    [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
-
-                    @if (message.replyTo && message.replyPreview) {
-                      <button type="button" class="reply-quote" (click)="scrollToMessage(message.replyTo); $event.stopPropagation()">
-                        <span class="reply-quote__icon">↩</span>
-                        <span class="reply-quote__text">{{ message.replyPreview }}</span>
-                      </button>
-                    }
-
-                    @if (message.deleted) {
-                      <div class="message-bubble__tomb">🚫 This message was deleted</div>
-                    } @else if (editingId === message.id) {
-                      <div class="message-edit">
-                        <textarea class="message-edit__field" [(ngModel)]="editText" rows="1"
-                          (click)="$event.stopPropagation()"></textarea>
-                        <div class="message-edit__actions">
-                          <button type="button" class="message-edit__save" (click)="saveEdit(message); $event.stopPropagation()">Save</button>
-                          <button type="button" class="message-edit__cancel" (click)="cancelEdit(); $event.stopPropagation()">Cancel</button>
-                        </div>
-                      </div>
-                    } @else {
-                      <div class="message-bubble__text">{{ message.message }}</div>
-                    }
-
-                    @if (message.from === currentUser && message.status === 'failed') {
-                      <button type="button" class="message-failed" (click)="retryMessage(message); $event.stopPropagation()">
-                        ⚠ Couldn't send · <span class="message-failed__retry">↻ Retry</span>
-                      </button>
-                    } @else if (isGroupEnd(thread, i) && !message.deleted && editingId !== message.id) {
-                      <div class="message-bubble__meta">
-                        {{ message.from }} · {{ formatMessageTime(message.datetime) }}@if (message.editedAt) {<span class="message-bubble__edited"> · (edited)</span>}
-                      </div>
-                    }
-
-                    @if (!message.deleted && message.id) {
-                      <div class="msg-actions" (click)="$event.stopPropagation()">
-                        <div class="msg-actions__react">
-                          @for (e of quickReactions; track e) {
-                            <button type="button" class="msg-actions__emoji" (click)="toggleReaction(message, e)">{{ e }}</button>
-                          }
-                          <button type="button" class="msg-actions__more" (click)="togglePicker(message, $event)">＋</button>
-                        </div>
-                      </div>
-                    }
-
-                    @if (pickerOpenId === message.id) {
-                      <div class="emoji-picker" (click)="$event.stopPropagation()">
-                        @for (e of emojiPicker; track e) {
-                          <button type="button" class="emoji-picker__item" (click)="toggleReaction(message, e)">{{ e }}</button>
-                        }
-                      </div>
-                    }
-                  </div>
-
-                  @if (!message.deleted && message.id) {
-                    <div class="msg-dots-wrap">
-                      <button type="button" class="msg-dots" (click)="toggleMenu(message, $event)" aria-label="Message actions">⋯</button>
-                      @if (menuOpenId === message.id) {
-                        <div class="msg-menu" (click)="$event.stopPropagation()">
-                          <button type="button" class="msg-menu__item" (click)="startReply(message)">↩ Reply</button>
-                          @if (isOwn(message)) {
-                            <button type="button" class="msg-menu__item" (click)="startEdit(message)">✏️ Edit</button>
-                            <button type="button" class="msg-menu__item msg-menu__item--danger" (click)="deleteMessage(message)">🗑 Delete</button>
-                          }
-                        </div>
-                      }
-                    </div>
-                  }
-                  </div>
-                </div>
-                @if (message.reactions && message.reactions.length) {
-                  <div class="reaction-pills"
-                    [class.reaction-pills--sent]="message.from === currentUser">
-                    @for (r of message.reactions; track r.emoji) {
-                      <button type="button" class="reaction-pill" [class.reaction-pill--mine]="r.mine"
-                        (click)="toggleReaction(message, r.emoji)">
-                        {{ r.emoji }} <span class="reaction-pill__n">{{ r.count }}</span>
-                      </button>
-                    }
-                  </div>
-                }
-                @if (message.from === currentUser && readersOf(thread, i).length) {
-                  <div class="seen-row">
-                    @for (r of readersOf(thread, i); track r) {
-                      <app-avatar [name]="r" [seed]="r" [size]="16"></app-avatar>
-                    }
-                  </div>
-                }
-              }
-            </div>
+            <app-message-thread
+              [thread]="store.openThread()"
+              [readState]="store.readState()[store.selectedKey()] || {}"
+              [currentUser]="store.currentUser"
+              [isGroup]="isGroupOpen"
+              (react)="store.toggleReaction($event.msg, $event.emoji)"
+              (reply)="replyingTo = $event"
+              (edit)="store.editMessage($event.msg, $event.body)"
+              (remove)="store.deleteMessage($event)"
+              (retry)="onThreadRetry($event)"
+              (scrollToOriginal)="scrollToMessage($event)">
+            </app-message-thread>
           }
           @if (isPeerTyping) {
             <div class="typing-bubble" aria-label="typing">
@@ -302,7 +199,6 @@
             [(ngModel)]="newMessage"
             [placeholder]="composerPlaceholder"
             rows="1"
-            [disabled]="isSendingMessage"
             (input)="notifyTyping()"
             (keydown)="onComposerKeydown($event)"
           ></textarea>
@@ -310,9 +206,9 @@
             mat-raised-button
             color="primary"
             type="button"
-            [disabled]="isSendingMessage || !newMessage.trim()"
+            [disabled]="!newMessage.trim()"
             (click)="sendMessage()">
-            {{ isSendingMessage ? 'Sending…' : 'Send' }}
+            Send
           </button>
         </div>
       }

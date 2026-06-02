@@ -1,0 +1,16 @@
+<header class="m-top">
+  <h1 class="m-top__title">Calls</h1>
+  <a routerLink="/m/profile" class="m-top__me" aria-label="Profile">
+    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [size]="32"></app-avatar>
+  </a>
+</header>
+
+<div class="m-body">
+  <div class="m-empty">
+    <span class="m-empty__badge">
+      <mat-icon class="m-empty__icon">videocam</mat-icon>
+    </span>
+    <h2 class="m-empty__headline">Calls are coming soon</h2>
+    <p class="m-empty__sub">Voice and video calls will live here.</p>
+  </div>
+</div>

@@ -1,0 +1,71 @@
+<header class="mt-head">
+  <button type="button" class="mt-back" (click)="back()" aria-label="Back">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  @if (isGroup) {
+    <span class="mt-mono">{{ monogram(title) }}</span>
+  } @else {
+    <app-avatar [name]="title" [seed]="peerUsername" [size]="34"></app-avatar>
+  }
+  <span class="mt-id">
+    <span class="mt-name">{{ title }}</span>
+    @if (isGroup) {
+      <span class="mt-sub">{{ entry.memberCount }} members</span>
+    } @else if (store.isOnline(peerUsername)) {
+      <span class="mt-sub mt-sub--online">Online</span>
+    }
+  </span>
+  <button type="button" class="mt-call" disabled aria-label="Call (coming soon)">
+    <mat-icon>videocam</mat-icon>
+  </button>
+</header>
+
+<div class="mt-scroll" #scrollHost appSwipeBack (swipeBack)="back()">
+  <app-message-thread
+    [thread]="store.openThread()"
+    [readState]="store.readState()[store.selectedKey()] || {}"
+    [currentUser]="store.currentUser"
+    [isGroup]="isGroup"
+    (react)="store.toggleReaction($event.msg, $event.emoji)"
+    (reply)="replyingTo = $event"
+    (edit)="store.editMessage($event.msg, $event.body)"
+    (remove)="store.deleteMessage($event)"
+    (retry)="onRetry($event)"
+    (scrollToOriginal)="scrollToMessage($event)">
+  </app-message-thread>
+  @if (store.typingFrom()) {
+    <div class="mt-typing" aria-label="typing">
+      <span></span><span></span><span></span>
+    </div>
+  }
+</div>
+
+<div class="mt-composer">
+  @if (replyingTo) {
+    <div class="mt-replychip">
+      <div class="mt-replychip__body">
+        <span class="mt-replychip__who">Replying to {{ replyName(replyingTo) }}</span>
+        <span class="mt-replychip__text">{{ replyingTo.message }}</span>
+      </div>
+      <button type="button" class="mt-replychip__x" (click)="replyingTo = null" aria-label="Cancel reply">&#x2715;</button>
+    </div>
+  }
+  <div class="mt-inputrow">
+    <textarea
+      class="mt-input"
+      [(ngModel)]="newMessage"
+      rows="1"
+      placeholder="Message"
+      (input)="store.notifyTyping(entry)"
+      (keydown)="onKeydown($event)">
+    </textarea>
+    <button
+      type="button"
+      class="mt-send"
+      [disabled]="!newMessage.trim()"
+      (click)="send()"
+      aria-label="Send">
+      <mat-icon>send</mat-icon>
+    </button>
+  </div>
+</div>

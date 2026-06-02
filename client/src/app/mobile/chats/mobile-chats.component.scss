@@ -1,0 +1,240 @@
+@import '../../ui/styles/tokens';
+
+// ─── Host ────────────────────────────────────────────────────────────────────
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: $rojin-canvas;
+}
+
+// ─── Top bar ─────────────────────────────────────────────────────────────────
+.m-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-bottom: 12px;
+  padding-inline: 18px;
+  background: $rojin-chrome;
+  border-bottom: 1px solid $rojin-line;
+  flex-shrink: 0;
+  z-index: 2;
+
+  &__title {
+    font-family: $rojin-font-display;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: $rojin-canvas;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  &__me {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: opacity $rojin-dur-fast $rojin-ease;
+    flex-shrink: 0;
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+}
+
+// ─── Conversation list ────────────────────────────────────────────────────────
+.m-list {
+  flex: 1;
+  overflow-y: auto;
+  background: $rojin-canvas;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+// ─── Row ─────────────────────────────────────────────────────────────────────
+.m-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid $rojin-line;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background $rojin-dur-fast $rojin-ease;
+
+  &:active {
+    background: rgba(176, 141, 87, 0.08);
+  }
+
+  // Avatar wrapper (direct)
+  &__av {
+    position: relative;
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Online presence dot
+  &__dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: $rojin-gold;
+    border: 2px solid $rojin-canvas;
+    box-shadow: 0 0 0 1px rgba(176, 141, 87, 0.4);
+  }
+
+  // Group monogram circle
+  &__mono {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, $rojin-primary 0%, $rojin-primary-dark 100%);
+    color: $rojin-canvas;
+    font-family: $rojin-font-display;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    box-shadow:
+      0 2px 8px rgba(43, 10, 44, 0.28),
+      inset 0 1px 0 rgba(247, 242, 232, 0.12);
+    user-select: none;
+  }
+
+  // Text content block
+  &__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  &__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__name {
+    font-family: $rojin-font-body;
+    font-size: 15px;
+    font-weight: 600;
+    color: $rojin-ink;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__time {
+    font-family: $rojin-font-body;
+    font-size: 11px;
+    color: $rojin-ink-soft;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__preview {
+    font-family: $rojin-font-body;
+    font-size: 13px;
+    color: $rojin-ink-soft;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
+  }
+
+  // Unread badge
+  &__badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: $rojin-gold;
+    color: $rojin-chrome;
+    font-family: $rojin-font-body;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+}
+
+// ─── FAB ─────────────────────────────────────────────────────────────────────
+.m-fab {
+  position: fixed;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  right: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(145deg, $rojin-gold 0%, darken($rojin-gold, 10%) 100%);
+  color: $rojin-chrome;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow:
+    0 4px 16px rgba(176, 141, 87, 0.45),
+    0 1px 4px rgba(43, 10, 44, 0.20);
+  transition:
+    transform $rojin-dur-fast $rojin-ease-emphasis,
+    box-shadow $rojin-dur-fast $rojin-ease;
+  z-index: 10;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+  }
+
+  &:active {
+    transform: scale(0.92);
+    box-shadow:
+      0 2px 8px rgba(176, 141, 87, 0.35),
+      0 1px 2px rgba(43, 10, 44, 0.16);
+  }
+}

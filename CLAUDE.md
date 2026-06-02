@@ -105,6 +105,13 @@ Reactions, reply, and edit/delete all key on a **`client_message_id`** — a UUI
 - `ui/styles/_tokens.scss` is the **single source of truth** for brand colors, breakpoints, toolbar/sidebar sizing, and viewport mixins. Feature SCSS and `client/src/styles.scss` `@use` it — never hard-code hex values or breakpoint widths in feature components.
 - Mobile/notch handling uses `100dvh` / `-webkit-fill-available` and `env(safe-area-inset-*)`. `index.html` sets `viewport-fit=cover` for this to take effect.
 
+### Client layering (core/ → shells)
+- **`ChatApi`** (`core/chat-api.service.ts`) + **`RealtimeClient`** (`core/realtime-client.service.ts`) in `client/src/app/core/` own ALL backend I/O (REST and Socket.IO respectively). **`ChatStore`** (`core/chat-store.service.ts`, Angular signals) owns all state, business rules, and the **single app-lifetime socket** — socket-stream handlers are wrapped in `NgZone.run()` so signal writes trigger change detection. Components are **pure views**: no `HttpClient` or `socket.io-client` in components.
+- Desktop chat is the route `/chat`; phones load the **lazy `ChatMobileModule`** at `/m` (child routes: `/m/chats`, `/m/calls`, `/m/people`, `/m/c/:key`). The root `''` route redirects by viewport via `ShellRedirectComponent` (`matchMedia('(max-width:768px)')`). Auth stays reactive (401/422 → `/signin`); no route guards.
+- **`<app-message-thread>`** (`SharedChatModule`) is the shared message renderer used by both desktop and mobile — change message UI there, once. It reads from `ChatStore` signals.
+- Mobile shell = bottom tab bar (**Chats / Calls / People**) + full-screen thread pushed on conversation open; Profile is a pushed screen reached from the top-bar avatar. Touch gestures (swipe-back, swipe-to-reply, pull-to-refresh, long-press) live in `client/src/app/mobile/gestures/` (`GesturesModule`).
+- The backend REST + Socket.IO API is the **stable contract** — a future native app would re-implement only the transport layer (`ChatApi` + `RealtimeClient`) against the same endpoints and events.
+
 ### Angular version
 `@angular/*` is on stable **21.2.x** (upgraded from a 13.0.0 prerelease via stepwise `ng update`). Material uses the **MDC** components with **M3** token theming — `mat.define-theme` in `client/src/styles.scss`, with the brand palette in `client/src/app/ui/styles/_m3-theme.scss` (generated from the seed `#4a154b`). The app still uses **NgModules** (no standalone migration) and the webpack `@angular-devkit/build-angular:browser` builder (esbuild/`application` builder intentionally not adopted). Upgrade one major at a time via `ng update`.
 

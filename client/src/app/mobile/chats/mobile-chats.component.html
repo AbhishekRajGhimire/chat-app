@@ -1,0 +1,37 @@
+<header class="m-top">
+  <h1 class="m-top__title">Chats</h1>
+  <a routerLink="/m/profile" class="m-top__me" aria-label="Profile">
+    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [size]="32"></app-avatar>
+  </a>
+</header>
+
+<div class="m-list" appPullToRefresh (refresh)="store.loadConversations()">
+  @for (entry of store.sortedConversations(); track entry.key) {
+    @if (!(entry.kind === 'direct' && entry.username === store.currentUser)) {
+      <button type="button" class="m-row" (click)="open(entry)">
+        @if (entry.kind === 'group') {
+          <span class="m-row__mono">{{ monogram(entry.displayName) }}</span>
+        } @else {
+          <span class="m-row__av">
+            <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [size]="46"></app-avatar>
+            @if (store.isOnline(entry.username || '')) { <span class="m-row__dot"></span> }
+          </span>
+        }
+        <span class="m-row__body">
+          <span class="m-row__top">
+            <span class="m-row__name">{{ entry.displayName }}</span>
+            @if (entry.last_message_at) { <span class="m-row__time">{{ listTime(entry.last_message_at) }}</span> }
+          </span>
+          <span class="m-row__bottom">
+            <span class="m-row__preview">{{ entry.last_message || (entry.kind === 'group' ? (entry.memberCount + ' members') : '') }}</span>
+            @if ((entry.unreadCount || 0) > 0) { <span class="m-row__badge">{{ entry.unreadCount }}</span> }
+          </span>
+        </span>
+      </button>
+    }
+  }
+</div>
+
+<button type="button" class="m-fab" (click)="newGroup()" aria-label="New group">
+  <mat-icon>edit</mat-icon>
+</button>
