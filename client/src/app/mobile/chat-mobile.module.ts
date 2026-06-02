@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialogModule } from '@angular/material/dialog';
 import { UiModule } from '../ui/ui.module';
 import { SharedChatModule } from '../chat/shared-chat.module';
 
@@ -32,6 +33,6 @@ const routes: Routes = [{
     MobileCallsComponent, MobilePeopleComponent, MobileProfileComponent,
     MobileThreadComponent,
   ],
-  imports: [CommonModule, FormsModule, MatIconModule, UiModule, SharedChatModule, RouterModule.forChild(routes)],
+  imports: [CommonModule, FormsModule, MatIconModule, MatDialogModule, UiModule, SharedChatModule, RouterModule.forChild(routes)],
 })
 export class ChatMobileModule {}
