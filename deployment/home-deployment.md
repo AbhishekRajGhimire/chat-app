@@ -42,6 +42,12 @@ New-NetFirewallRule -DisplayName "Chat app – backend 3000" -Direction Inbound 
 New-NetFirewallRule -DisplayName "Chat app – Angular 4200" -Direction Inbound -Protocol TCP -LocalPort 4200 -Action Allow -Profile Private
 ```
 
+> **Note (2026-06-02):** these inbound rules were **deleted** during cleanup, so they
+> do **not** exist by default. Re-create them with the commands above (Administrator)
+> whenever you next want LAN/phone access; remove again afterwards with
+> `Remove-NetFirewallRule -DisplayName "Chat app – *"`. The HTTPS harness similarly
+> needs a one-off `443` rule — see [`https-tls.md`](./https-tls.md).
+
 Ensure the Wi‑Fi network is classified as **Private** (**Settings** → **Network & Internet** → **Properties** for your Wi‑Fi).
 
 ## Find the host PC’s LAN IP address
