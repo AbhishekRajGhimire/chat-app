@@ -8,6 +8,12 @@
   // trailing `min-height: -webkit-fill-available` — it would win and collapse the
   // host to content height because app-root has no defined height.
   @include rojin-viewport-min-height;
+  // Cap to exactly the viewport so the message list (.chat-container) absorbs
+  // overflow and scrolls, keeping the composer pinned on-screen (no page scroll).
+  // height:100dvh is viewport-relative so it won't collapse like height:100%.
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: $rojin-canvas;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }

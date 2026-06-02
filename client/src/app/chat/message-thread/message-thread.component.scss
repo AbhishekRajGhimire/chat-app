@@ -1,5 +1,10 @@
 @import '../../ui/styles/tokens';
 
+// Make the component wrapper transparent to layout so `.message-thread`
+// behaves as a direct child of the host's scroll container (.chat-container on
+// desktop, .mt-scroll on mobile) — restoring the flex-fill + scroll behaviour.
+:host { display: contents; }
+
 .message-thread {
   display: flex;
   flex-direction: column;
