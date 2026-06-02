@@ -118,6 +118,11 @@ export class ChatStore {
     });
   }
 
+  /** Deselect the open conversation (back to the inbox / search view). */
+  clearSelection(): void {
+    this.selectedKey.set('');
+  }
+
   /** Find-or-create a local DM entry (no navigation). */
   ensureDirectEntry(username: string): ConversationEntry {
     let entry = this.conversations().find(
