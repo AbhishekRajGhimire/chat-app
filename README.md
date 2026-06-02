@@ -1,6 +1,6 @@
 # Rojin — Real‑Time Chat (Angular 21 + Flask + Socket.IO)
 
-A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask + Flask‑SocketIO** backend over **SQLite**. JWT auth, **direct *and* group** conversations, live delivery, read receipts, an installable **PWA**, and **Web Push** notifications — wrapped in a bespoke "Aubergine Atelier" visual design.
+A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask + Flask‑SocketIO** backend over **SQLite**. JWT auth, **direct *and* group** conversations with **reactions, replies, and edit/delete**, live delivery, read receipts, a **distinct native‑style phone UI**, an installable **PWA**, and **Web Push** notifications — wrapped in a bespoke "Aubergine Atelier" visual design.
 
 > The dev stack runs as two processes; the Angular dev server proxies `/api` and `/socket.io` to Flask. Deeper docs live in [`docs/`](./docs) and [`deployment/`](./deployment); agent/contributor guidance is in [`CLAUDE.md`](./CLAUDE.md).
 
@@ -9,6 +9,8 @@ A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask 
 - **Auth** — sign up / sign in with JWT; secrets are fail‑fast in production mode.
 - **Direct messages** — real‑time 1:1 chat with persistence.
 - **Group chats** — create groups, add/remove members, leave; live delivery via per‑conversation Socket.IO rooms; sender attribution in the thread.
+- **Message actions** — emoji **reactions**, **reply / quote**, and **edit / delete your own** messages, live across clients (DMs + groups), built on a client‑generated message id.
+- **Adaptive UI** — a **two‑pane desktop** layout *and* a separate **native‑style phone UI**: bottom tab bar (Chats / Calls / People), full‑screen list ↔ thread, and touch gestures (swipe‑back, swipe‑to‑reply, pull‑to‑refresh, long‑press). The root redirects by viewport; the phone module is lazy‑loaded.
 - **Reliable send** — optimistic UI with a **failed‑state + retry** (messages never silently vanish).
 - **Unread + recency** — conversation list sorted most‑recent‑first with **last‑message previews**, **unread count badges**, and a tab‑title badge. Unread is **server‑backed** (survives reload, counts messages received while away).
 - **Read receipts** — "seen" reader avatars under messages (DMs and group "Seen by N").
@@ -21,7 +23,7 @@ A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask 
 
 ## Tech stack
 
-- **Frontend** — Angular 21 (TypeScript, NgModules), Angular Material (MDC + M3), `socket.io-client`, `@angular/service-worker` (ngsw) + a custom service worker.
+- **Frontend** — Angular 21 (TypeScript, NgModules) with a **layered client** (`ChatApi` + `RealtimeClient` transport, a **signals‑based `ChatStore`** owning state + the socket, pure‑view shells) and a **lazy‑loaded mobile module**; Angular Material (MDC + M3), `socket.io-client`, `@angular/service-worker` (ngsw) + a custom service worker.
 - **Backend** — Python, Flask, Flask‑SocketIO (eventlet), Flask‑JWT‑Extended, Flask‑Bcrypt, Flask‑CORS, `pywebpush`, `python-dotenv`.
 - **Database** — SQLite (conversation‑centric schema).
 - **Tooling** — `pytest` (backend), GitHub Actions CI, Caddy + mkcert (LAN HTTPS), `sharp` (PWA icon rasterization).
@@ -38,7 +40,8 @@ backend/
     user.py              # auth routes (signup/signin/signout)
     chatfunc.py          # DM REST, chats_history, Socket.IO events (per-conversation rooms)
     groups.py            # group REST endpoints (create/members/messages/read)
-    conversations.py     # conversation + room + read/unread helpers
+    messages.py          # message actions: reactions, edit, delete (keyed on client_message_id)
+    conversations.py     # conversation + room + read/unread + message-serialization helpers
     profile.py           # JWT profile APIs
     push.py              # Web Push (VAPID, subscriptions, send_push_to_user)
     database.py          # SQLite connection + schema + idempotent migrations
@@ -46,8 +49,11 @@ backend/
 client/
   src/
     app/
+      core/                           # ChatApi + RealtimeClient (transport SDK), ChatStore (signals state + socket), models
+      chat/                           # desktop two-pane shell + shared <app-message-thread> + group-create dialog
+      mobile/                         # lazy phone module: shell, tab bar, chats/people/profile/calls, thread, gesture directives
+      shell-redirect/                 # form-factor redirect (viewport → /chat desktop or /m phone)
       signin/ signup/ profile/        # auth + profile (+ notifications toggle)
-      chat/                           # chat UI, conversation model, group-create dialog
       ui/                             # shared UI + Atelier design tokens / M3 theme
       push.service.ts, auth.service.ts, profile.service.ts
   public/                # PWA manifest, sw-custom.js, icons
@@ -99,21 +105,23 @@ The dev server proxies `/api/*` and `/socket.io/*` (WebSocket) to `http://localh
 **Conversations & messages** *(all JWT):*
 - `GET /api/chats_history` — DMs **and** groups, each tagged `kind`, with `unread_count`, last message + time
 - `GET /api/directory_users` — everyone except you (New‑Chat search)
-- `GET /api/dm/messages/<user>` → `{ messages, read_state }` · `POST /api/dm/messages` `{to_username, body}` · `POST /api/dm/<user>/read`
+- `GET /api/dm/messages/<user>` → `{ messages, read_state }` · `POST /api/dm/messages` `{to_username, body, client_message_id, reply_to}` · `POST /api/dm/<user>/read`
 - `POST /api/groups` `{title, members}` · `GET|PATCH /api/groups/<id>` · `POST /api/groups/<id>/members` · `DELETE /api/groups/<id>/members/<user>` · `POST /api/groups/<id>/leave`
-- `GET /api/groups/<id>/messages` → `{ messages, read_state }` · `POST /api/groups/<id>/messages` `{body}` · `POST /api/groups/<id>/read`
+- `GET /api/groups/<id>/messages` → `{ messages, read_state }` · `POST /api/groups/<id>/messages` `{body, client_message_id, reply_to}` · `POST /api/groups/<id>/read`
+
+**Message actions** *(JWT, keyed on `client_message_id`):* `POST /api/messages/<id>/react` `{emoji}` (toggle) · `PATCH /api/messages/<id>` `{body}` (edit, owner‑only) · `DELETE /api/messages/<id>` (soft delete, owner‑only)
 
 **Profiles** *(JWT):* `GET|PATCH /api/me/profile`, `GET /api/users/<user>/profile`
 
 **Web Push** *(JWT):* `GET /api/push/vapid-key`, `POST /api/push/subscribe`, `POST /api/push/unsubscribe`
 
-**Socket.IO** *(JWT in the connect query):* client emits `send_message`, `typing`; server emits `receive_message`, `peer_typing`, `online_users`, `conversation_added`, `conversation_removed`, `conversation_read`.
+**Socket.IO** *(JWT in the connect query):* client emits `send_message`, `typing`; server emits `receive_message`, `peer_typing`, `online_users`, `conversation_added`, `conversation_removed`, `conversation_read`, `reaction_updated`, `message_edited`, `message_deleted`.
 
 \* `signout` and all "JWT" routes require an `Authorization: Bearer <token>` header.
 
 ## Deployment & PWA on a phone
 
-- **Home/LAN (HTTP):** [`deployment/home-deployment.md`](./deployment/home-deployment.md) — same‑Wi‑Fi access, firewall rules, stopping cleanly.
+- **Home/LAN (HTTP):** [`deployment/home-deployment.md`](./deployment/home-deployment.md) — same‑Wi‑Fi access, firewall rules, stopping cleanly. Opening the LAN URL on a phone lands you in the **native mobile UI** automatically (the root redirects by viewport).
 - **HTTPS harness (for PWA install + Web Push):** [`deployment/https-tls.md`](./deployment/https-tls.md) — `deployment/serve-https.ps1` serves the built PWA over trusted TLS at `https://Avi.local` (Caddy + mkcert). A service worker / push **needs a secure context**; plain‑HTTP LAN won't register it.
 - **Web Push:** generate a VAPID keypair into `backend/.env` (one‑liner in `.env.example`), then enable in **Profile → Notifications** on a device served over HTTPS (iOS requires the PWA be installed).
 
