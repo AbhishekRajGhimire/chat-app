@@ -16,6 +16,7 @@ from .conversations import (
     user_conversation_ids,
 )
 from .database import connection, cursor
+from .push import send_push_to_user
 
 from chat import app, online_users, socketio
 
@@ -101,6 +102,13 @@ def post_dm_message():
     # peer's username room). This POST only persists. Keeping DM delivery on the
     # username room (unchanged) avoids the "recipient not yet in a brand-new
     # conversation's room" problem; only groups use per-conversation rooms.
+    send_push_to_user(int(peer_row[0]), {
+        "title": me_username,
+        "body": body[:140],
+        "conversationKey": me_username,
+        "kind": "direct",
+        "url": "/",
+    })
     return (
         jsonify(
             {

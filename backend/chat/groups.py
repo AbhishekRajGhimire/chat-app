@@ -17,6 +17,7 @@ from .conversations import (
     remove_group_member,
 )
 from .database import connection, cursor
+from .push import send_push_to_user
 
 
 def _utc_now_iso() -> str:
@@ -209,4 +210,19 @@ def post_group_message(cid):
     connection.commit()
     # Persistence only; live delivery is the socket send_message path
     # (emits to the conversation room, excluding the sender).
+    cursor.execute("SELECT title FROM Conversation WHERE id=?", (cid,))
+    _t = cursor.fetchone()
+    gtitle = (_t[0] if _t else None) or "Group"
+    sender = get_jwt_identity()
+    for m in group_members(cid):
+        if m["username"] != sender:
+            muid = _uid(m["username"])
+            if muid is not None:
+                send_push_to_user(muid, {
+                    "title": gtitle,
+                    "body": f"{sender}: {body[:120]}",
+                    "conversationKey": f"conv:{cid}",
+                    "kind": "group",
+                    "url": "/",
+                })
     return jsonify({"message": "ok", "datetime": now}), 201
