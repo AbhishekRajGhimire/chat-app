@@ -126,11 +126,20 @@ The dev server proxies `/api/*` and `/socket.io/*` (WebSocket) to `http://localh
 
 ## Screenshots
 
-> ⚠️ The images below are from an early build (Jan 2026) and **predate the Aubergine Atelier redesign + group chats / PWA** — they no longer reflect the current UI. New screenshots TBD.
-
-<img width="1482" height="930" alt="early build" src="https://github.com/user-attachments/assets/19c5ee4f-9a11-44c4-9080-144538b7f4c3" />
-
-<img width="1490" height="965" alt="early build" src="https://github.com/user-attachments/assets/01c3c183-a51c-482a-9d38-35f7e18cf569" />
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/01-signin.png" alt="Sign in"><br><sub><b>Sign in</b> — the Aubergine Atelier hero + paper form.</sub></td>
+    <td width="50%"><img src="docs/screenshots/02-chat-dm.png" alt="Direct message"><br><sub><b>Direct message</b> — charcoal sidebar with unread/preview cards; paper &amp; plum bubbles; a "seen" reader avatar.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/03-group-chat.png" alt="Group chat"><br><sub><b>Group chat</b> — monogram header + member count.</sub></td>
+    <td><img src="docs/screenshots/04-new-group.png" alt="New group dialog"><br><sub><b>New group</b> — name it and multi-select members.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/05-profile.png" alt="Profile"><br><sub><b>Profile</b> — display name / avatar / bio + the Notifications (Web Push) toggle.</sub></td>
+    <td></td>
+  </tr>
+</table>
 
 ## Notes
 
