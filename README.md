@@ -137,7 +137,7 @@ The dev server proxies `/api/*` and `/socket.io/*` (WebSocket) to `http://localh
   </tr>
   <tr>
     <td><img src="docs/screenshots/05-profile.png" alt="Profile"><br><sub><b>Profile</b> — display name / avatar / bio + the Notifications (Web Push) toggle.</sub></td>
-    <td></td>
+    <td><img src="docs/screenshots/06-notifications.png" alt="Web Push notification"><br><sub><b>Web Push</b> — a real notification (branded icon, sender + preview) when the app isn't focused.</sub></td>
   </tr>
 </table>
 
