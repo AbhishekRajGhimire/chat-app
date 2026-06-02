@@ -1,125 +1,138 @@
-## Real‑Time Chat App (Angular + Flask + Socket.IO)
+# Rojin — Real‑Time Chat (Angular 21 + Flask + Socket.IO)
 
-A full‑stack real‑time chat application built with **Angular** on the frontend and **Flask + Socket.IO** on the backend. It includes **JWT authentication**, **online user presence**, real‑time direct messages, and **SQLite** persistence for chat history.
+A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask + Flask‑SocketIO** backend over **SQLite**. JWT auth, **direct *and* group** conversations, live delivery, read receipts, an installable **PWA**, and **Web Push** notifications — wrapped in a bespoke "Aubergine Atelier" visual design.
 
-### Features
+> The dev stack runs as two processes; the Angular dev server proxies `/api` and `/socket.io` to Flask. Deeper docs live in [`docs/`](./docs) and [`deployment/`](./deployment); agent/contributor guidance is in [`CLAUDE.md`](./CLAUDE.md).
 
-- **Auth**: Sign up / sign in with JWT
-- **Realtime messaging**: Socket.IO events for instant delivery
-- **Presence**: Online users list
-- **Message history**: Persisted to SQLite under **direct conversations** (conversation-centric schema; see `docs/evolution.md`)
-- **Simple UI**: Angular Material components for a clean chat experience
+## Features
 
-### Tech stack
+- **Auth** — sign up / sign in with JWT; secrets are fail‑fast in production mode.
+- **Direct messages** — real‑time 1:1 chat with persistence.
+- **Group chats** — create groups, add/remove members, leave; live delivery via per‑conversation Socket.IO rooms; sender attribution in the thread.
+- **Reliable send** — optimistic UI with a **failed‑state + retry** (messages never silently vanish).
+- **Unread + recency** — conversation list sorted most‑recent‑first with **last‑message previews**, **unread count badges**, and a tab‑title badge. Unread is **server‑backed** (survives reload, counts messages received while away).
+- **Read receipts** — "seen" reader avatars under messages (DMs and group "Seen by N").
+- **Typing indicators** — live "is typing…" with a throttled, auto‑clearing bubble.
+- **Presence** — online users; live‑appearing new conversations.
+- **Profiles** — display name, avatar, bio; initials‑avatar fallback; directory search.
+- **Design** — "Aubergine Atelier" system (Angular Material **MDC + M3** theming, charcoal chrome, gold accents), WCAG‑AA tuned, with refined motion.
+- **PWA** — installable, offline app‑shell, branded icon.
+- **Web Push** — opt‑in notifications (Profile toggle) even when the app is closed; tap‑to‑open. *(Requires VAPID keys + a secure context — see below.)*
 
-- **Frontend**: Angular (TypeScript), Angular Material, `socket.io-client`
-- **Backend**: Python, Flask, Flask‑SocketIO, Flask‑JWT‑Extended, Flask‑Bcrypt, Flask‑CORS
-- **Database**: SQLite
+## Tech stack
 
-### Project structure
+- **Frontend** — Angular 21 (TypeScript, NgModules), Angular Material (MDC + M3), `socket.io-client`, `@angular/service-worker` (ngsw) + a custom service worker.
+- **Backend** — Python, Flask, Flask‑SocketIO (eventlet), Flask‑JWT‑Extended, Flask‑Bcrypt, Flask‑CORS, `pywebpush`, `python-dotenv`.
+- **Database** — SQLite (conversation‑centric schema).
+- **Tooling** — `pytest` (backend), GitHub Actions CI, Caddy + mkcert (LAN HTTPS), `sharp` (PWA icon rasterization).
+
+## Project structure
 
 ```
 backend/
   main.py                # starts Flask-SocketIO server
+  requirements.txt       # runtime deps   (requirements-dev.txt: pytest)
+  pytest.ini, .env.example
   chat/
-    __init__.py          # Flask app + SocketIO + JWT setup
-    user.py              # auth routes: signup/signin/signout
-    chatfunc.py          # DM REST + directory + socket events
-    conversations.py     # get-or-create direct Conversation by user pair
+    __init__.py          # Flask app + SocketIO + JWT + VAPID; fail-fast secrets
+    user.py              # auth routes (signup/signin/signout)
+    chatfunc.py          # DM REST, chats_history, Socket.IO events (per-conversation rooms)
+    groups.py            # group REST endpoints (create/members/messages/read)
+    conversations.py     # conversation + room + read/unread helpers
     profile.py           # JWT profile APIs
-    database.py          # SQLite connection + schema (drops legacy pairwise Message if seen)
+    push.py              # Web Push (VAPID, subscriptions, send_push_to_user)
+    database.py          # SQLite connection + schema + idempotent migrations
+  tests/                 # pytest: auth, dm, groups, read, push, helpers, socket
 client/
   src/
     app/
-      signin/            # login UI
-      signup/            # registration UI
-      chat/              # chat UI + Socket.IO client
-      auth.service.ts    # HTTP API calls
-    proxy.conf.json      # dev proxy for /api and /socket.io
+      signin/ signup/ profile/        # auth + profile (+ notifications toggle)
+      chat/                           # chat UI, conversation model, group-create dialog
+      ui/                             # shared UI + Atelier design tokens / M3 theme
+      push.service.ts, auth.service.ts, profile.service.ts
+  public/                # PWA manifest, sw-custom.js, icons
+  ngsw-config.json, proxy.conf.json   # service worker config + dev proxy
+deployment/              # home-deployment.md, Caddyfile, serve-https.ps1, https-tls.md
+docs/                    # system-design, security, evolution, glossary
+.github/workflows/ci.yml # backend pytest + frontend build on every push/PR
 ```
 
-### System design
+## Local setup (Windows / PowerShell)
 
-- See `docs/system-design.md` for a high-level architecture diagram and request flows.
+**Prerequisites:** Python 3.10+ and **Node.js 22+ / npm 11** (the lockfile is npm 11; CI uses Node 24. Node 20's npm 10 fails `npm ci`).
 
-### Evolution (future features)
-
-- See `docs/evolution.md` for a roadmap toward profiles, group chat, and a conversation-centric data model.
-
-### Security
-
-- See `docs/security.md` for the current security posture and hardening checklists (dev, organization LAN, production).
-
-### Glossary
-
-- See `docs/glossary.md` for short definitions of terms (JWT, CORS, Socket.IO, SPA, etc.).
-
-### Home / LAN deployment
-
-- See `deployment/home-deployment.md` for running the app on your Wi‑Fi (firewall, URLs, and how to stop everything safely).
-
-### Local setup (Windows / PowerShell)
-
-#### Prerequisites
-
-- **Python 3.10+**
-- **Node.js 20+** (required by Angular 21)
-
-#### 1) Run the backend
-
-From repo root:
+### 1) Backend
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env
-# Edit .env: set SECRET_KEY and JWT_SECRET_KEY for office/LAN (32+ random characters each).
-python main.py
+copy .env.example .env          # then edit it (see note below)
+python main.py                  # http://localhost:3000
 ```
 
-Backend runs on **`http://localhost:3000`** (override with **`PORT`** / **`HOST`** in `.env`).
+> **Setup gotcha — `FLASK_DEBUG`.** It defaults to **false**, and when off the server **refuses to start unless `SECRET_KEY` + `JWT_SECRET_KEY` are set** (no repo‑known secrets in a real run). For the easy local "just run it" path, put **`FLASK_DEBUG=true`** in `backend/.env` — that enables auto‑reload and lets the dev secret fallbacks apply. See `backend/.env.example` for all knobs (`CORS_ORIGINS`, `JWT_ACCESS_TOKEN_DAYS`, and `VAPID_*` for Web Push).
 
-**Environment (LAN/office):** Optional **`.env`** in `backend/` is loaded automatically if **`python-dotenv`** is installed (included in `requirements.txt`). See **`backend/.env.example`** for **`JWT_ACCESS_TOKEN_DAYS`**, **`CORS_ORIGINS`**, **`FLASK_DEBUG`**, and secrets.
+Backend tests:
 
-#### 2) Run the frontend
+```powershell
+pip install -r requirements-dev.txt
+pytest -q                        # isolated temp DB; never touches chat.db
+```
 
-In a second terminal from repo root:
+### 2) Frontend
 
 ```powershell
 cd client
 npm install
-npm run start
+npm run start                    # ng serve on http://localhost:4200
+npm run build                    # production build (the PWA service worker only runs here)
 ```
 
-Frontend runs on **`http://localhost:4200`** and proxies:
-- `/api/*` → `http://localhost:3000`
-- `/socket.io/*` → `http://localhost:3000` (WebSocket)
+The dev server proxies `/api/*` and `/socket.io/*` (WebSocket) to `http://localhost:3000`.
 
-### API endpoints (backend)
+## API (backend)
 
-- `POST /api/signup`
-- `POST /api/signin`
-- `POST /api/signout` (JWT required)
-- `GET /api/chats_history` (JWT required)
-- `GET /api/directory_users` (JWT required) — all registered usernames except you (for New Chat search)
-- `GET /api/dm/messages/<other_username>` (JWT required) — DM thread with that user
-- `POST /api/dm/messages` (JWT required) — JSON `{ "to_username", "body" }`
-- `GET /api/me/profile`, `PATCH /api/me/profile` (JWT required)
-- `GET /api/users/<username>/profile` (JWT required) — public profile card
+**Auth:** `POST /api/signup`, `POST /api/signin`, `POST /api/signout`*
 
-### Screenshots
+**Conversations & messages** *(all JWT):*
+- `GET /api/chats_history` — DMs **and** groups, each tagged `kind`, with `unread_count`, last message + time
+- `GET /api/directory_users` — everyone except you (New‑Chat search)
+- `GET /api/dm/messages/<user>` → `{ messages, read_state }` · `POST /api/dm/messages` `{to_username, body}` · `POST /api/dm/<user>/read`
+- `POST /api/groups` `{title, members}` · `GET|PATCH /api/groups/<id>` · `POST /api/groups/<id>/members` · `DELETE /api/groups/<id>/members/<user>` · `POST /api/groups/<id>/leave`
+- `GET /api/groups/<id>/messages` → `{ messages, read_state }` · `POST /api/groups/<id>/messages` `{body}` · `POST /api/groups/<id>/read`
 
-I’ll add screenshots here after pushing to GitHub:
+**Profiles** *(JWT):* `GET|PATCH /api/me/profile`, `GET /api/users/<user>/profile`
 
-<img width="1482" height="930" alt="Screenshot 2026-01-29 162735" src="https://github.com/user-attachments/assets/19c5ee4f-9a11-44c4-9080-144538b7f4c3" />
+**Web Push** *(JWT):* `GET /api/push/vapid-key`, `POST /api/push/subscribe`, `POST /api/push/unsubscribe`
 
+**Socket.IO** *(JWT in the connect query):* client emits `send_message`, `typing`; server emits `receive_message`, `peer_typing`, `online_users`, `conversation_added`, `conversation_removed`, `conversation_read`.
 
-<img width="1490" height="965" alt="Screenshot 2026-01-29 161700" src="https://github.com/user-attachments/assets/01c3c183-a51c-482a-9d38-35f7e18cf569" />
-#### I created two test accounts 'avi' and 'gri' to test the messaging.
+\* `signout` and all "JWT" routes require an `Authorization: Bearer <token>` header.
 
-### Notes
+## Deployment & PWA on a phone
 
-- This repository is configured for **local testing**. The Flask secret keys are **development-only** values.
+- **Home/LAN (HTTP):** [`deployment/home-deployment.md`](./deployment/home-deployment.md) — same‑Wi‑Fi access, firewall rules, stopping cleanly.
+- **HTTPS harness (for PWA install + Web Push):** [`deployment/https-tls.md`](./deployment/https-tls.md) — `deployment/serve-https.ps1` serves the built PWA over trusted TLS at `https://Avi.local` (Caddy + mkcert). A service worker / push **needs a secure context**; plain‑HTTP LAN won't register it.
+- **Web Push:** generate a VAPID keypair into `backend/.env` (one‑liner in `.env.example`), then enable in **Profile → Notifications** on a device served over HTTPS (iOS requires the PWA be installed).
 
+## More docs
+
+- [`docs/system-design.md`](./docs/system-design.md) — architecture, sequence diagrams, full event tables.
+- [`docs/security.md`](./docs/security.md) — threat models + hardening checklists (read before touching auth/CORS/Socket.IO).
+- [`docs/evolution.md`](./docs/evolution.md) — roadmap + what's delivered.
+- [`docs/glossary.md`](./docs/glossary.md) — JWT / CORS / SPA / Socket.IO terms.
+
+## Screenshots
+
+> ⚠️ The images below are from an early build (Jan 2026) and **predate the Aubergine Atelier redesign + group chats / PWA** — they no longer reflect the current UI. New screenshots TBD.
+
+<img width="1482" height="930" alt="early build" src="https://github.com/user-attachments/assets/19c5ee4f-9a11-44c4-9080-144538b7f4c3" />
+
+<img width="1490" height="965" alt="early build" src="https://github.com/user-attachments/assets/01c3c183-a51c-482a-9d38-35f7e18cf569" />
+
+## Notes
+
+- Configured for **local / LAN testing**; the committed Flask secrets are **dev‑only** fallbacks (and only used when `FLASK_DEBUG=true`).
+- Single shared SQLite connection + in‑process presence ⇒ **single‑process** by design (don't add workers without changes — see `CLAUDE.md`).
