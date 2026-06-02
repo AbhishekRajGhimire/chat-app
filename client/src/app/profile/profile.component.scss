@@ -117,3 +117,38 @@
     border-radius: $rojin-radius-sm !important;
   }
 }
+
+.profile-notif {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid $rojin-line;
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  &__label {
+    font-family: $rojin-font-display;
+    font-size: 15px;
+    color: $rojin-ink;
+  }
+  &__sub {
+    font-family: $rojin-font-body;
+    font-size: 12.5px;
+    color: $rojin-text-meta;
+    line-height: 1.4;
+  }
+
+  button {
+    flex-shrink: 0;
+    font-family: $rojin-font-body;
+    font-weight: 600;
+    border-radius: $rojin-radius-sm !important;
+  }
+}

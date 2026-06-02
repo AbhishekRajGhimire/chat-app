@@ -83,6 +83,17 @@ export class ChatComponent implements OnInit, OnDestroy {
   private readonly mqHandler = () =>
     this.zone.run(() => this.applyViewportPlaceholders());
 
+  /** Notification-click → open that conversation (posted by the service worker). */
+  private readonly swMessageHandler = (e: MessageEvent) => {
+    const d: any = e.data;
+    if (d?.type === 'open-conversation' && d.data?.conversationKey) {
+      this.zone.run(() => {
+        const entry = this.conversations.find((c) => c.key === d.data.conversationKey);
+        if (entry) this.selectConversation(entry);
+      });
+    }
+  };
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -177,6 +188,9 @@ export class ChatComponent implements OnInit, OnDestroy {
     } else {
       this.mediaQuery.addListener(this.mqHandler as any);
     }
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', this.swMessageHandler);
+    }
   }
 
   private applyViewportPlaceholders(): void {
@@ -198,6 +212,9 @@ export class ChatComponent implements OnInit, OnDestroy {
       } else {
         this.mediaQuery.removeListener(this.mqHandler as any);
       }
+    }
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.removeEventListener('message', this.swMessageHandler);
     }
     if (this.typingClearTimer) clearTimeout(this.typingClearTimer);
     document.title = ChatComponent.BASE_TITLE;

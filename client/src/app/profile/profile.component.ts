@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ProfileService, UserProfile } from '../profile.service';
+import { PushService } from '../push.service';
 
 @Component({
     selector: 'app-profile',
@@ -15,13 +16,20 @@ export class ProfileComponent implements OnInit {
   saving = false;
   errorMessage = '';
 
+  /** Notifications: 'unsupported' | 'denied' | 'on' | 'off'. */
+  notifState: 'unsupported' | 'denied' | 'on' | 'off' = 'off';
+  notifBusy = false;
+  notifError = '';
+
   constructor(
     private fb: UntypedFormBuilder,
     private profileService: ProfileService,
-    private router: Router
+    private router: Router,
+    private push: PushService
   ) {}
 
   ngOnInit(): void {
+    this.refreshNotifState();
     this.form = this.fb.group({
       display_name: ['', [Validators.maxLength(120)]],
       avatar_url: ['', [Validators.maxLength(2048)]],
@@ -79,5 +87,38 @@ export class ProfileComponent implements OnInit {
 
   cancel(): void {
     this.router.navigate(['/']);
+  }
+
+  private async refreshNotifState(): Promise<void> {
+    if (!this.push.supported) {
+      this.notifState = 'unsupported';
+      return;
+    }
+    if (this.push.permission === 'denied') {
+      this.notifState = 'denied';
+      return;
+    }
+    this.notifState = (await this.push.isSubscribed()) ? 'on' : 'off';
+  }
+
+  async toggleNotifications(): Promise<void> {
+    if (this.notifBusy || this.notifState === 'unsupported' || this.notifState === 'denied') {
+      return;
+    }
+    this.notifBusy = true;
+    this.notifError = '';
+    try {
+      if (this.notifState === 'on') {
+        await this.push.disable();
+      } else {
+        await this.push.enable();
+      }
+      await this.refreshNotifState();
+    } catch (e: any) {
+      this.notifError = e?.message || 'Could not change notifications.';
+      await this.refreshNotifState();
+    } finally {
+      this.notifBusy = false;
+    }
   }
 }

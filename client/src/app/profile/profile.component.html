@@ -73,6 +73,26 @@
           </button>
         </div>
       </form>
+
+      <div class="profile-notif">
+        <div class="profile-notif__text">
+          <span class="profile-notif__label">Notifications</span>
+          <span class="profile-notif__sub">
+            @switch (notifState) {
+              @case ('on') { Push notifications are on for this device. }
+              @case ('off') { Get a banner when a message arrives and you're away. }
+              @case ('denied') { Blocked in your browser settings — re-allow there to enable. }
+              @case ('unsupported') { Available in the installed / HTTPS app (not the dev server). }
+            }
+          </span>
+          @if (notifError) { <span class="profile-error">{{ notifError }}</span> }
+        </div>
+        <button mat-stroked-button type="button"
+          [disabled]="notifBusy || notifState === 'unsupported' || notifState === 'denied'"
+          (click)="toggleNotifications()">
+          {{ notifBusy ? '…' : (notifState === 'on' ? 'Turn off' : 'Enable') }}
+        </button>
+      </div>
     </mat-card>
   }
 </div>
