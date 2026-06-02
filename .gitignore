@@ -48,3 +48,6 @@ docs/personal-notes.md
 # --- LAN HTTPS certs (mkcert; never commit private keys) ---
 deployment/certs/
 
+# --- Web Push VAPID private key (never commit) ---
+backend/vapid_private.pem
+
