@@ -1,0 +1,107 @@
+@import '../../ui/styles/tokens';
+
+// ─── Host ────────────────────────────────────────────────────────────────────
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: $rojin-canvas;
+}
+
+// ─── Top bar ─────────────────────────────────────────────────────────────────
+.m-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-bottom: 12px;
+  padding-inline: 18px;
+  background: $rojin-chrome;
+  border-bottom: 1px solid $rojin-line;
+  flex-shrink: 0;
+  z-index: 2;
+
+  &__title {
+    font-family: $rojin-font-display;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: $rojin-canvas;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  &__me {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: opacity $rojin-dur-fast $rojin-ease;
+    flex-shrink: 0;
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+}
+
+// ─── Body ─────────────────────────────────────────────────────────────────────
+.m-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $rojin-canvas;
+  padding: 32px 24px;
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+.m-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+
+  &__badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(176, 141, 87, 0.18) 0%, rgba(176, 141, 87, 0.08) 100%);
+    border: 1.5px solid rgba(176, 141, 87, 0.38);
+    box-shadow:
+      0 4px 20px rgba(176, 141, 87, 0.12),
+      inset 0 1px 0 rgba(247, 242, 232, 0.15);
+  }
+
+  &__icon {
+    font-size: 36px;
+    width: 36px;
+    height: 36px;
+    color: $rojin-gold;
+  }
+
+  &__headline {
+    font-family: $rojin-font-display;
+    font-size: 20px;
+    font-weight: 700;
+    color: $rojin-ink;
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  &__sub {
+    font-family: $rojin-font-body;
+    font-size: 14px;
+    color: $rojin-ink-soft;
+    margin: 0;
+    line-height: 1.5;
+    max-width: 220px;
+  }
+}
