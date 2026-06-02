@@ -17,12 +17,6 @@ import { ConversationEntry, DirectoryUser, toEntry } from '../core/models/conver
 import { Message } from '../core/models/message.model';
 import { GroupCreateDialogComponent } from './group-create-dialog/group-create-dialog.component';
 
-// Mirrors the avatar palette so a sender's name color matches their avatar.
-const SENDER_COLORS = [
-  '#6a2c6c', '#7a4a1f', '#7a3450', '#355c34',
-  '#43436f', '#84432a', '#5a3a6d', '#1f5f52',
-];
-
 /**
  * Thin VIEW over `ChatStore`. All chat state + data + business logic lives in
  * the store; this component owns only view concerns: toolbar label, viewport /
@@ -56,22 +50,8 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   /** Message being replied to (drives the composer chip + reply_to on send). */
   replyingTo: Message | null = null;
-  /** Message id whose action overlay / menu / picker is open (mobile + click). */
-  activeMsgId: string | null = null;
-  menuOpenId: string | null = null;
-  pickerOpenId: string | null = null;
-  /** Message currently being edited inline ('' = none) + its draft text. */
-  editingId: string | null = null;
-  editText = '';
   /** Briefly-flashed message after a scroll-to-original. */
   highlightedId: string | null = null;
-
-  readonly quickReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
-  readonly emojiPicker = [
-    '👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🎉', '👏', '🙌',
-    '😍', '🤔', '😅', '😎', '😭', '😡', '👀', '💯', '✅', '❌',
-    '🤝', '💪', '🙇', '☕', '🚀', '⭐', '💡', '📌', '👋', '🤷',
-  ];
 
   /** Whether the group member panel is open. */
   membersOpen = false;
@@ -247,74 +227,11 @@ export class ChatComponent implements OnInit, OnDestroy {
     return this.selectedEntry?.displayName ?? '';
   }
 
-  // --- date / grouping helpers --------------------------------------------
+  // --- date helpers (sidebar list timestamps) -----------------------------
   private toDate(dt: any): Date | null {
     if (!dt) return null;
     const d = new Date(dt);
     return Number.isNaN(d.getTime()) ? null : d;
-  }
-
-  formatMessageTime(dt: any): string {
-    const d = this.toDate(dt);
-    if (!d) return String(dt ?? '');
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  }
-
-  daySeparatorLabel(dt: any): string {
-    const d = this.toDate(dt);
-    if (!d) return '';
-    const startOfDay = (x: Date) =>
-      new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-    const diffDays = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  shouldShowDaySeparator(thread: Message[], index: number): boolean {
-    if (index <= 0) return true;
-    const cur = this.toDate(thread[index]?.datetime);
-    const prev = this.toDate(thread[index - 1]?.datetime);
-    if (!cur || !prev) return false;
-    return cur.toDateString() !== prev.toDateString();
-  }
-
-  private gapMs(a: any, b: any): number {
-    const da = this.toDate(a);
-    const db = this.toDate(b);
-    if (!da || !db) return Infinity;
-    return Math.abs(da.getTime() - db.getTime());
-  }
-
-  private static readonly GROUP_WINDOW_MS = 5 * 60 * 1000;
-
-  isContinuation(thread: Message[], index: number): boolean {
-    if (index <= 0) return false;
-    const cur = thread[index];
-    const prev = thread[index - 1];
-    if (!cur || !prev || cur.from !== prev.from) return false;
-    if (this.shouldShowDaySeparator(thread, index)) return false;
-    return this.gapMs(cur.datetime, prev.datetime) <= ChatComponent.GROUP_WINDOW_MS;
-  }
-
-  isGroupEnd(thread: Message[], index: number): boolean {
-    if (index >= thread.length - 1) return true;
-    return !this.isContinuation(thread, index + 1);
-  }
-
-  /** Show the sender name+avatar header above a received run in a group. */
-  showSenderHeader(thread: Message[], index: number): boolean {
-    if (!this.isGroupOpen) return false;
-    const m = thread[index];
-    if (!m || m.from === this.currentUser) return false;
-    return !this.isContinuation(thread, index);
-  }
-
-  senderColor(name: string): string {
-    const key = (name || '').toLowerCase();
-    let hash = 0;
-    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
-    return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
   }
 
   isUserOnline(username: string): boolean {
@@ -388,27 +305,6 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   markRead(entry: ConversationEntry): void {
     this.store.markRead(entry);
-  }
-
-  /**
-   * Readers (excluding me and the sender) whose last_read covers this message
-   * AND for whom this is their latest-read message — so each reader's avatar
-   * shows exactly once, under the last message they've seen.
-   */
-  readersOf(thread: Message[], index: number): string[] {
-    const rs = this.store.readState()[this.store.selectedKey()];
-    const msg = thread[index];
-    if (!rs || !msg) return [];
-    const msgTime = new Date(msg.datetime).getTime();
-    const next = thread[index + 1];
-    const nextTime = next ? new Date(next.datetime).getTime() : Infinity;
-    const out: string[] = [];
-    for (const [username, lastRead] of Object.entries(rs)) {
-      if (username === this.currentUser || username === msg.from || !lastRead) continue;
-      const read = new Date(lastRead).getTime();
-      if (read >= msgTime && read < nextTime) out.push(username);
-    }
-    return out;
   }
 
   // --- creating a group ----------------------------------------------------
@@ -502,56 +398,13 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.replyingTo = null;
   }
 
-  retryMessage(msg: Message): void {
+  /** Retry handler bridged from `<app-message-thread>`. */
+  onThreadRetry(msg: Message): void {
     const e = this.store.selectedEntry();
     if (e) this.store.retry(e, msg);
   }
 
-  // --- message actions: shared --------------------------------------------
-  isOwn(msg: Message): boolean {
-    return msg.from === this.currentUser;
-  }
-
-  // --- action overlay open/close ------------------------------------------
-  toggleActions(msg: Message): void {
-    this.activeMsgId = this.activeMsgId === msg.id ? null : msg.id ?? null;
-    this.menuOpenId = null;
-    this.pickerOpenId = null;
-  }
-
-  toggleMenu(msg: Message, event: Event): void {
-    event.stopPropagation();
-    this.menuOpenId = this.menuOpenId === msg.id ? null : msg.id ?? null;
-    this.pickerOpenId = null;
-  }
-
-  togglePicker(msg: Message, event: Event): void {
-    event.stopPropagation();
-    this.pickerOpenId = this.pickerOpenId === msg.id ? null : msg.id ?? null;
-  }
-
-  closeOverlays(): void {
-    this.activeMsgId = null;
-    this.menuOpenId = null;
-    this.pickerOpenId = null;
-  }
-
-  // --- message actions: reactions -----------------------------------------
-  toggleReaction(msg: Message, emoji: string): void {
-    this.store.toggleReaction(msg, emoji);
-    this.closeOverlays();
-  }
-
-  // --- message actions: reply ---------------------------------------------
-  startReply(msg: Message): void {
-    this.replyingTo = msg;
-    this.closeOverlays();
-    setTimeout(() => {
-      const el = document.querySelector<HTMLTextAreaElement>('.message-input__field');
-      el?.focus();
-    });
-  }
-
+  // --- reply composer chip (host-owned) -----------------------------------
   cancelReply(): void {
     this.replyingTo = null;
   }
@@ -565,35 +418,25 @@ export class ChatComponent implements OnInit, OnDestroy {
     return entry?.displayName ?? msg.from;
   }
 
+  /**
+   * Scroll to (and briefly flash) the original of a reply. The flash class is
+   * toggled on the row element directly — the row lives inside
+   * `<app-message-thread>`, so the host can't bind it via a template input.
+   */
   scrollToMessage(id: string | null | undefined): void {
     if (!id) return;
     const el = document.getElementById('msg-' + id);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     this.highlightedId = id;
-    setTimeout(() => this.zone.run(() => (this.highlightedId = null)), 1200);
-  }
-
-  // --- message actions: edit + delete -------------------------------------
-  startEdit(msg: Message): void {
-    if (!this.isOwn(msg) || !msg.id) return;
-    this.editingId = msg.id;
-    this.editText = msg.message;
-    this.closeOverlays();
-  }
-
-  cancelEdit(): void {
-    this.editingId = null;
-    this.editText = '';
-  }
-
-  saveEdit(msg: Message): void {
-    this.store.editMessage(msg, this.editText);
-    this.cancelEdit();
-  }
-
-  deleteMessage(msg: Message): void {
-    this.closeOverlays();
-    this.store.deleteMessage(msg);
+    el.classList.add('message-row--flash');
+    setTimeout(
+      () =>
+        this.zone.run(() => {
+          this.highlightedId = null;
+          el.classList.remove('message-row--flash');
+        }),
+      1200
+    );
   }
 }

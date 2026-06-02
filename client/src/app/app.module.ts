@@ -10,6 +10,7 @@ import { ChatComponent } from './chat/chat.component';
 import { GroupCreateDialogComponent } from './chat/group-create-dialog/group-create-dialog.component';
 import { ProfileComponent } from './profile/profile.component';
 import { UiModule } from './ui/ui.module';
+import { SharedChatModule } from './chat/shared-chat.module';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {MatToolbarModule} from '@angular/material/toolbar';
@@ -47,7 +48,8 @@ import { ServiceWorkerModule } from '@angular/service-worker';
         MatDialogModule,
         MatTooltipModule,
         UiModule,
-        
+        SharedChatModule,
+
       ServiceWorkerModule.register('sw-custom.js', {
         enabled: !isDevMode(),
         // Register the ServiceWorker as soon as the application is stable
