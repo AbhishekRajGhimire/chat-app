@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, NgZone, computed, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { ChatApi } from './chat-api.service';
@@ -61,7 +61,8 @@ export class ChatStore {
 
   constructor(
     private chatApi: ChatApi,
-    private realtime: RealtimeClient
+    private realtime: RealtimeClient,
+    private zone: NgZone
   ) {}
 
   // --- lifecycle -----------------------------------------------------------
@@ -69,17 +70,19 @@ export class ChatStore {
     if (this.initialized) return;
     this.initialized = true;
     this.realtime.connect(localStorage.getItem('access_token') || '');
-    this.realtime.receiveMessage$.subscribe((d) => this.onReceive(d));
+    // socket.io callbacks fire OUTSIDE Angular's zone; wrap handlers in
+    // zone.run so signal writes schedule change detection (Zone.js app).
+    this.realtime.receiveMessage$.subscribe((d) => this.zone.run(() => this.onReceive(d)));
     this.realtime.onlineUsers$.subscribe((u) =>
-      this.onlineUsers.set(Array.isArray(u) ? u : [])
+      this.zone.run(() => this.onlineUsers.set(Array.isArray(u) ? u : []))
     );
-    this.realtime.peerTyping$.subscribe((d) => this.onPeerTyping(d));
-    this.realtime.conversationAdded$.subscribe(() => this.loadConversations());
-    this.realtime.conversationRemoved$.subscribe((d) => this.onConversationRemoved(d));
-    this.realtime.conversationRead$.subscribe((d) => this.onConversationRead(d));
-    this.realtime.reactionUpdated$.subscribe((d) => this.onReactionUpdated(d));
-    this.realtime.messageEdited$.subscribe((d) => this.onMessageEdited(d));
-    this.realtime.messageDeleted$.subscribe((d) => this.onMessageDeleted(d));
+    this.realtime.peerTyping$.subscribe((d) => this.zone.run(() => this.onPeerTyping(d)));
+    this.realtime.conversationAdded$.subscribe(() => this.zone.run(() => this.loadConversations()));
+    this.realtime.conversationRemoved$.subscribe((d) => this.zone.run(() => this.onConversationRemoved(d)));
+    this.realtime.conversationRead$.subscribe((d) => this.zone.run(() => this.onConversationRead(d)));
+    this.realtime.reactionUpdated$.subscribe((d) => this.zone.run(() => this.onReactionUpdated(d)));
+    this.realtime.messageEdited$.subscribe((d) => this.zone.run(() => this.onMessageEdited(d)));
+    this.realtime.messageDeleted$.subscribe((d) => this.zone.run(() => this.onMessageDeleted(d)));
     this.loadConversations();
   }
 
