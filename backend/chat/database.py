@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import uuid
 
 # NOTE: For local testing we keep a single connection (check_same_thread=False)
 # so Flask + SocketIO handlers can share it. The path is overridable via
@@ -90,7 +91,10 @@ def _create_conversation_schema():
             sender_user_id INTEGER NOT NULL REFERENCES User(id),
             body TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            client_message_id TEXT
+            client_message_id TEXT,
+            reply_to TEXT,
+            edited_at TEXT,
+            deleted_at TEXT
         )
         """
     )
@@ -98,6 +102,24 @@ def _create_conversation_schema():
         """
         CREATE INDEX IF NOT EXISTS ix_message_conv_created
         ON Message(conversation_id, created_at)
+        """
+    )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS MessageReaction (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_message_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES User(id) ON DELETE CASCADE,
+            emoji TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE (client_message_id, user_id, emoji)
+        )
+        """
+    )
+    cursor.execute(
+        """
+        CREATE INDEX IF NOT EXISTS ix_reaction_cmid
+        ON MessageReaction(client_message_id)
         """
     )
     cursor.execute(
@@ -126,6 +148,22 @@ def _create_conversation_schema():
     )
 
 
+def _backfill_client_message_ids():
+    """Give every message a stable public id (UUID) so it can be reacted to /
+    edited / deleted. Runs once for rows predating the client_message_id era."""
+    cursor.execute(
+        "SELECT id FROM Message WHERE client_message_id IS NULL OR client_message_id = ''"
+    )
+    rows = cursor.fetchall()
+    for (mid,) in rows:
+        cursor.execute(
+            "UPDATE Message SET client_message_id=? WHERE id=?",
+            (str(uuid.uuid4()), mid),
+        )
+    if rows:
+        connection.commit()
+
+
 _create_conversation_schema()
 
 if _legacy_pairwise_message_table():
@@ -137,6 +175,17 @@ cursor.execute("PRAGMA table_info(ConversationMember)")
 if "last_read_at" not in {row[1] for row in cursor.fetchall()}:
     cursor.execute("ALTER TABLE ConversationMember ADD COLUMN last_read_at TEXT")
     connection.commit()
+
+# Idempotent: add message-action columns to pre-existing Message tables.
+cursor.execute("PRAGMA table_info(Message)")
+_msg_cols = {row[1] for row in cursor.fetchall()}
+for _col in ("reply_to", "edited_at", "deleted_at"):
+    if _col not in _msg_cols:
+        cursor.execute(f"ALTER TABLE Message ADD COLUMN {_col} TEXT")
+connection.commit()
+
+# Give pre-existing messages stable public ids.
+_backfill_client_message_ids()
 
 cursor.execute(
     """

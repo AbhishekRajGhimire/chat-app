@@ -12,6 +12,7 @@ from .conversations import (
     is_member,
     mark_read,
     read_state,
+    serialize_messages,
     unread_count,
     user_conversation_ids,
 )
@@ -90,12 +91,17 @@ def post_dm_message():
 
     cid = get_or_create_direct_conversation(int(me_row[0]), int(peer_row[0]))
     now = _utc_now_iso()
+    cmid = data.get("client_message_id")
+    cmid = cmid.strip() if isinstance(cmid, str) and cmid.strip() else None
+    reply_to = data.get("reply_to")
+    reply_to = reply_to.strip() if isinstance(reply_to, str) and reply_to.strip() else None
     cursor.execute(
         """
-        INSERT INTO Message (conversation_id, sender_user_id, body, created_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO Message
+            (conversation_id, sender_user_id, body, created_at, client_message_id, reply_to)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (cid, me_row[0], body, now),
+        (cid, me_row[0], body, now, cmid, reply_to),
     )
     connection.commit()
     # NOTE: live delivery happens via the socket `send_message` handler (DM →
@@ -115,6 +121,7 @@ def post_dm_message():
                 "message": "Message posted successfully",
                 "conversation_id": cid,
                 "message_id": cursor.lastrowid,
+                "client_message_id": cmid,
             }
         ),
         201,
@@ -165,24 +172,10 @@ def get_dm_messages(other_username):
     if cid is None:
         return jsonify(empty), 200
 
-    cursor.execute(
-        """
-        SELECT u.username, m.sender_user_id, m.body, m.created_at
-        FROM Message m
-        JOIN User u ON u.id = m.sender_user_id
-        WHERE m.conversation_id = ?
-        ORDER BY m.created_at
-        """,
-        (cid,),
-    )
-    rows = cursor.fetchall()
-    formatted = []
-    for sender_name, sender_id, text, ts in rows:
-        to_name = other_username if int(sender_id) == me_id else me_username
-        formatted.append(
-            {"from": sender_name, "to": to_name, "message": text, "datetime": ts}
-        )
-    return jsonify({"messages": formatted, "read_state": read_state(cid)})
+    msgs = serialize_messages(cid, me_id)
+    for m in msgs:
+        m["to"] = other_username if m["from"] == me_username else me_username
+    return jsonify({"messages": msgs, "read_state": read_state(cid)})
 
 
 @app.route("/api/chats_history", methods=["GET"])
@@ -358,6 +351,19 @@ def _sender_user_id(username: str):
     return int(row[0]) if row else None
 
 
+def _reply_preview(cmid):
+    if not cmid:
+        return None
+    cursor.execute(
+        "SELECT body, deleted_at FROM Message WHERE client_message_id=?", (cmid,)
+    )
+    row = cursor.fetchone()
+    if not row or row[1] is not None:
+        return None
+    body = row[0] or ""
+    return body[:120]
+
+
 @socketio.on("send_message")
 def handle_message(data):
     sender = socket_user_by_sid.get(request.sid)
@@ -368,6 +374,19 @@ def handle_message(data):
     if message is None or not isinstance(message, str):
         return
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    cmid = data.get("client_message_id")
+    cmid = cmid.strip() if isinstance(cmid, str) and cmid.strip() else None
+    reply_to = data.get("reply_to")
+    reply_to = reply_to.strip() if isinstance(reply_to, str) and reply_to.strip() else None
+    extra = {
+        "id": cmid,
+        "reply_to": reply_to,
+        "reply_preview": _reply_preview(reply_to),
+        "reactions": [],
+        "edited_at": None,
+        "deleted": False,
+    }
 
     # Group: deliver to the conversation room (members joined on connect).
     cid = data.get("conversation_id")
@@ -382,7 +401,7 @@ def handle_message(data):
         emit(
             "receive_message",
             {"username": sender, "message": message, "datetime": now,
-             "kind": "group", "conversation_id": cid},
+             "kind": "group", "conversation_id": cid, **extra},
             room=conversation_room(cid),
             skip_sid=request.sid,  # sender already appended optimistically
         )
@@ -398,7 +417,7 @@ def handle_message(data):
         return
     emit(
         "receive_message",
-        {"username": sender, "message": message, "datetime": now, "kind": "direct"},
+        {"username": sender, "message": message, "datetime": now, "kind": "direct", **extra},
         room=recipient,
     )
 

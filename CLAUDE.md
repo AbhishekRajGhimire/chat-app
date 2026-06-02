@@ -88,6 +88,13 @@ The client both **emits over the socket** (for live delivery to the peer's room)
 
 If the peer is offline, the socket emit reaches an empty room — only the HTTP POST persists the message. The peer sees it the next time they call `GET /api/dm/messages/<other>`.
 
+### Message-level actions (`backend/chat/messages.py`, `chat.component.ts`)
+Reactions, reply, and edit/delete all key on a **`client_message_id`** — a UUID the client generates and sends in **both** the socket emit and the persistence POST (`sendMessage`/`postMessage`). The server stores it, the socket relay passes it straight through on `receive_message`, and `database.py` **backfills** it for pre-existing rows at startup. There is no other stable client-visible id; don't reintroduce one.
+- **Schema:** `MessageReaction(client_message_id, user_id, emoji)` + `Message.reply_to / edited_at / deleted_at` (all added idempotently). `conversations.serialize_messages(cid, me_id)` is the **single shared payload shape** for DM + group history (id, reactions `[{emoji,count,mine}]`, reply_to, reply_preview, edited_at, deleted); use it rather than re-querying messages.
+- **Endpoints** (all resolve conversation/ownership from the message row — the caller never supplies a conversation id): `POST /api/messages/<id>/react` (toggle), `PATCH /api/messages/<id>` (owner-only edit), `DELETE /api/messages/<id>` (owner-only soft delete).
+- **Live sync:** `reaction_updated` / `message_edited` / `message_deleted` broadcast to the per-conversation room `conv:<id>` (both DM participants and group members join it on connect). The client locates the target by scanning all loaded threads for the globally-unique id (`findMessage`) — no conversation_id→key map needed. Reaction `mine` flags are preserved locally on broadcast (only your own toggle changes your `mine`), so the room payload's `mine` is ignored by other clients. Same brand-new-conversation caveat as DM delivery: live action events may wait for a reload, history is always correct.
+- **UI affordance:** the bubble + a side-gutter ⋯ are wrapped in a `.message-cluster` so hover/tap only triggers over the message (not the full-width row); the quick-react bar floats above, the ⋯ menu varies by ownership (Reply vs Reply/Edit/Delete).
+
 ### Auth on the client
 - **No HTTP interceptor.** Every component reads `access_token` from `localStorage` and builds the `Authorization: Bearer …` header by hand (see `auth.service.ts`, `profile.service.ts`, `chat.component.ts`). New API calls must do the same or you'll get 401s.
 - **No route guard.** `app-routing.module.ts` has open routes. Auth enforcement is reactive: on a 401/422 from any backend call, components call `router.navigate(['/signin'])`. Preserve this pattern when adding screens.

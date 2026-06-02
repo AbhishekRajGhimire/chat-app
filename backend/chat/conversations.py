@@ -115,6 +115,71 @@ def read_state(cid: int) -> list:
     return [{"username": r[0], "last_read_at": r[1]} for r in cursor.fetchall()]
 
 
+_PREVIEW_MAX = 120
+
+
+def reactions_for(client_message_id: str, me_id: int) -> list:
+    """[{emoji, count, mine}] aggregated across users for one message."""
+    if not client_message_id:
+        return []
+    cursor.execute(
+        """
+        SELECT emoji, COUNT(*),
+               MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END)
+        FROM MessageReaction
+        WHERE client_message_id = ?
+        GROUP BY emoji
+        ORDER BY MIN(id)
+        """,
+        (me_id, client_message_id),
+    )
+    return [
+        {"emoji": r[0], "count": int(r[1]), "mine": bool(r[2])}
+        for r in cursor.fetchall()
+    ]
+
+
+def serialize_messages(cid: int, me_id: int) -> list:
+    """Full message payloads for a conversation: text + id + reactions + reply +
+    edited/deleted markers. Shared by DM and group history endpoints."""
+    cursor.execute(
+        """
+        SELECT u.username, m.body, m.created_at, m.client_message_id,
+               m.reply_to, m.edited_at, m.deleted_at
+        FROM Message m
+        JOIN User u ON u.id = m.sender_user_id
+        WHERE m.conversation_id = ?
+        ORDER BY m.created_at, m.id
+        """,
+        (cid,),
+    )
+    rows = cursor.fetchall()
+    body_by_cmid = {r[3]: r[1] for r in rows if r[3]}
+    deleted_cmids = {r[3] for r in rows if r[3] and r[6] is not None}
+    out = []
+    for username, body, ts, cmid, reply_to, edited_at, deleted_at in rows:
+        deleted = deleted_at is not None
+        preview = None
+        if reply_to and reply_to not in deleted_cmids:
+            parent = body_by_cmid.get(reply_to)
+            if parent:
+                preview = parent[:_PREVIEW_MAX]
+        out.append(
+            {
+                "from": username,
+                "message": "" if deleted else body,
+                "datetime": ts,
+                "id": cmid,
+                "reply_to": reply_to,
+                "reply_preview": preview,
+                "edited_at": edited_at,
+                "deleted": deleted,
+                "reactions": reactions_for(cmid, me_id) if cmid else [],
+            }
+        )
+    return out
+
+
 def _utc_now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 

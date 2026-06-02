@@ -54,6 +54,19 @@ Payloads should carry **`conversation_id`** and **`sender_user_id`** (plus displ
 
 ---
 
+## Messaging polish — delivered (reactions, reply, edit/delete)
+
+Per-message actions now exist in both DMs and groups, live across clients:
+
+- **Stable message id.** Every message carries a client-generated **`client_message_id`** (UUID), threaded through the existing socket-emit **and** persistence POST (no delivery refactor); pre-existing rows are **backfilled** at startup. All mutation endpoints key on this id.
+- **Reactions.** `MessageReaction(client_message_id, user_id, emoji)`; **`POST /api/messages/<id>/react`** toggles; aggregated `[{emoji,count,mine}]`; broadcast via the **`reaction_updated`** socket event. UI: hover/long-press quick-react bar + a full emoji picker; pills under the bubble (own highlighted, tap-toggle).
+- **Reply.** `Message.reply_to` stores the parent's id; payloads include a `reply_preview` snippet (suppressed if the parent was deleted). UI: a named "Replying to …" composer chip + a text-only in-thread quote that scrolls to the original.
+- **Edit / delete (own only).** **`PATCH`** / **`DELETE /api/messages/<id>`** (owner-checked 403); edit sets `edited_at` ("(edited)" label), delete is a soft `deleted_at` tombstone; broadcast via **`message_edited`** / **`message_deleted`**.
+
+Delivery rides the per-conversation room (`conv:<id>`) that both DM participants and group members join on connect, so the same caveat as DM live-delivery applies to a brand-new conversation (history is always correct). Backend covered by `tests/test_messages.py`.
+
+---
+
 ## Video calling (planned — placeholder in UI today)
 
 A disabled **"🎥 Call — coming soon"** control already sits in the conversation header (both DMs and groups) so the seam exists. The intended implementation, as its own future sub-project:
