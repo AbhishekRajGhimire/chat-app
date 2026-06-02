@@ -1,0 +1,10 @@
+@import '../../ui/styles/tokens';
+
+:host { display: block; height: 100%; }
+
+.m-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $rojin-canvas;
+}
