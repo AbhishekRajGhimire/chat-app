@@ -154,7 +154,7 @@
           </div>
         }
 
-        <div class="chat-container" #messageScrollHost>
+        <div class="chat-container" #messageScrollHost (click)="closeOverlays()">
           @let thread = openThread;
           @if (!thread.length) {
             <div class="message-thread-empty">
@@ -177,25 +177,99 @@
                 }
                 <div
                   class="message-row"
+                  [attr.id]="message.id ? 'msg-' + message.id : null"
                   [class.message-row--group-start]="!isContinuation(thread, i)"
                   [class.message-row--grouped]="isGroupOpen"
+                  [class.message-row--flash]="highlightedId === message.id"
                   [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
+                  <div class="message-cluster">
                   <div
                     class="message-bubble"
                     [class.message-bubble--failed]="message.status === 'failed'"
+                    [class.message-bubble--deleted]="message.deleted"
+                    [class.message-bubble--active]="activeMsgId === message.id"
+                    (click)="message.id && !message.deleted && toggleActions(message)"
                     [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
-                    <div class="message-bubble__text">{{ message.message }}</div>
+
+                    @if (message.replyTo && message.replyPreview) {
+                      <button type="button" class="reply-quote" (click)="scrollToMessage(message.replyTo); $event.stopPropagation()">
+                        <span class="reply-quote__icon">↩</span>
+                        <span class="reply-quote__text">{{ message.replyPreview }}</span>
+                      </button>
+                    }
+
+                    @if (message.deleted) {
+                      <div class="message-bubble__tomb">🚫 This message was deleted</div>
+                    } @else if (editingId === message.id) {
+                      <div class="message-edit">
+                        <textarea class="message-edit__field" [(ngModel)]="editText" rows="1"
+                          (click)="$event.stopPropagation()"></textarea>
+                        <div class="message-edit__actions">
+                          <button type="button" class="message-edit__save" (click)="saveEdit(message); $event.stopPropagation()">Save</button>
+                          <button type="button" class="message-edit__cancel" (click)="cancelEdit(); $event.stopPropagation()">Cancel</button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="message-bubble__text">{{ message.message }}</div>
+                    }
+
                     @if (message.from === currentUser && message.status === 'failed') {
-                      <button type="button" class="message-failed" (click)="retryMessage(message)">
+                      <button type="button" class="message-failed" (click)="retryMessage(message); $event.stopPropagation()">
                         ⚠ Couldn't send · <span class="message-failed__retry">↻ Retry</span>
                       </button>
-                    } @else if (isGroupEnd(thread, i)) {
+                    } @else if (isGroupEnd(thread, i) && !message.deleted && editingId !== message.id) {
                       <div class="message-bubble__meta">
-                        {{ message.from }} · {{ formatMessageTime(message.datetime) }}
+                        {{ message.from }} · {{ formatMessageTime(message.datetime) }}@if (message.editedAt) {<span class="message-bubble__edited"> · (edited)</span>}
+                      </div>
+                    }
+
+                    @if (!message.deleted && message.id) {
+                      <div class="msg-actions" (click)="$event.stopPropagation()">
+                        <div class="msg-actions__react">
+                          @for (e of quickReactions; track e) {
+                            <button type="button" class="msg-actions__emoji" (click)="toggleReaction(message, e)">{{ e }}</button>
+                          }
+                          <button type="button" class="msg-actions__more" (click)="togglePicker(message, $event)">＋</button>
+                        </div>
+                      </div>
+                    }
+
+                    @if (pickerOpenId === message.id) {
+                      <div class="emoji-picker" (click)="$event.stopPropagation()">
+                        @for (e of emojiPicker; track e) {
+                          <button type="button" class="emoji-picker__item" (click)="toggleReaction(message, e)">{{ e }}</button>
+                        }
                       </div>
                     }
                   </div>
+
+                  @if (!message.deleted && message.id) {
+                    <div class="msg-dots-wrap">
+                      <button type="button" class="msg-dots" (click)="toggleMenu(message, $event)" aria-label="Message actions">⋯</button>
+                      @if (menuOpenId === message.id) {
+                        <div class="msg-menu" (click)="$event.stopPropagation()">
+                          <button type="button" class="msg-menu__item" (click)="startReply(message)">↩ Reply</button>
+                          @if (isOwn(message)) {
+                            <button type="button" class="msg-menu__item" (click)="startEdit(message)">✏️ Edit</button>
+                            <button type="button" class="msg-menu__item msg-menu__item--danger" (click)="deleteMessage(message)">🗑 Delete</button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                  </div>
                 </div>
+                @if (message.reactions && message.reactions.length) {
+                  <div class="reaction-pills"
+                    [class.reaction-pills--sent]="message.from === currentUser">
+                    @for (r of message.reactions; track r.emoji) {
+                      <button type="button" class="reaction-pill" [class.reaction-pill--mine]="r.mine"
+                        (click)="toggleReaction(message, r.emoji)">
+                        {{ r.emoji }} <span class="reaction-pill__n">{{ r.count }}</span>
+                      </button>
+                    }
+                  </div>
+                }
                 @if (message.from === currentUser && readersOf(thread, i).length) {
                   <div class="seen-row">
                     @for (r of readersOf(thread, i); track r) {
@@ -212,7 +286,16 @@
             </div>
           }
         </div>
-        <div class="message-input">
+        <div class="message-input" [class.message-input--replying]="!!replyingTo">
+          @if (replyingTo) {
+            <div class="reply-chip">
+              <div class="reply-chip__body">
+                <span class="reply-chip__who">Replying to {{ replyName(replyingTo) }}</span>
+                <span class="reply-chip__text">{{ replyingTo.message }}</span>
+              </div>
+              <button type="button" class="reply-chip__x" (click)="cancelReply()" aria-label="Cancel reply">✕</button>
+            </div>
+          }
           <textarea
             matInput
             class="message-input__field"

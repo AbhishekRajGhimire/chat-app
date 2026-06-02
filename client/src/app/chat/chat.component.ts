@@ -20,12 +20,24 @@ import {
 } from './conversation';
 import { GroupCreateDialogComponent } from './group-create-dialog/group-create-dialog.component';
 
+interface Reaction {
+  emoji: string;
+  count: number;
+  mine: boolean;
+}
+
 interface Message {
+  id?: string;
   from: string;
   to: string;
   message: string;
   datetime: any;
   status?: 'sending' | 'sent' | 'failed';
+  reactions?: Reaction[];
+  replyTo?: string | null;
+  replyPreview?: string | null;
+  editedAt?: string | null;
+  deleted?: boolean;
 }
 
 // Mirrors the avatar palette so a sender's name color matches their avatar.
@@ -61,6 +73,25 @@ export class ChatComponent implements OnInit, OnDestroy {
   newMessage = '';
   isSendingMessage = false;
   readonly skeletonRows = [0, 1, 2, 3];
+
+  /** Message being replied to (drives the composer chip + reply_to on send). */
+  replyingTo: Message | null = null;
+  /** Message id whose action overlay / menu / picker is open (mobile + click). */
+  activeMsgId: string | null = null;
+  menuOpenId: string | null = null;
+  pickerOpenId: string | null = null;
+  /** Message currently being edited inline ('' = none) + its draft text. */
+  editingId: string | null = null;
+  editText = '';
+  /** Briefly-flashed message after a scroll-to-original. */
+  highlightedId: string | null = null;
+
+  readonly quickReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  readonly emojiPicker = [
+    '👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🎉', '👏', '🙌',
+    '😍', '🤔', '😅', '😎', '😭', '😡', '👀', '💯', '✅', '❌',
+    '🤝', '💪', '🙇', '☕', '🚀', '⭐', '💡', '📌', '👋', '🤷',
+  ];
 
   /** Sender currently typing in the open conversation (null = nobody). */
   typingFrom: string | null = null;
@@ -146,6 +177,15 @@ export class ChatComponent implements OnInit, OnDestroy {
     );
     this.socket.on('conversation_read', (data: any) =>
       this.zone.run(() => this.onConversationRead(data))
+    );
+    this.socket.on('reaction_updated', (data: any) =>
+      this.zone.run(() => this.onReactionUpdated(data))
+    );
+    this.socket.on('message_edited', (data: any) =>
+      this.zone.run(() => this.onMessageEdited(data))
+    );
+    this.socket.on('message_deleted', (data: any) =>
+      this.zone.run(() => this.onMessageDeleted(data))
     );
 
     this.socket.connect();
@@ -273,6 +313,28 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   get openThread(): Message[] {
     return this.chatHistory[this.selectedKey] || [];
+  }
+
+  // --- message identity / mapping -----------------------------------------
+  private newId(): string {
+    const c: any = typeof crypto !== 'undefined' ? crypto : null;
+    if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+    return 'm-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  private toMessage(raw: any): Message {
+    return {
+      id: raw.id ?? undefined,
+      from: String(raw.from),
+      to: raw.to ?? this.currentUser,
+      message: String(raw.message ?? ''),
+      datetime: raw.datetime ?? new Date().toISOString(),
+      reactions: Array.isArray(raw.reactions) ? raw.reactions : [],
+      replyTo: raw.reply_to ?? null,
+      replyPreview: raw.reply_preview ?? null,
+      editedAt: raw.edited_at ?? null,
+      deleted: !!raw.deleted,
+    };
   }
 
   // --- date / grouping helpers --------------------------------------------
@@ -421,12 +483,18 @@ export class ChatComponent implements OnInit, OnDestroy {
     const isGroup = data.kind === 'group' && data.conversation_id != null;
     const key = isGroup ? `conv:${data.conversation_id}` : from;
 
-    const msg: Message = {
+    const msg: Message = this.toMessage({
       from,
       to: this.currentUser,
-      message: String(data.message),
-      datetime: data.datetime ?? new Date().toISOString(),
-    };
+      message: data.message,
+      datetime: data.datetime,
+      id: data.id,
+      reply_to: data.reply_to,
+      reply_preview: data.reply_preview,
+      reactions: data.reactions,
+      edited_at: data.edited_at,
+      deleted: data.deleted,
+    });
     const prev = this.chatHistory[key] ?? [];
     this.chatHistory = { ...this.chatHistory, [key]: [...prev, msg] };
 
@@ -504,7 +572,7 @@ export class ChatComponent implements OnInit, OnDestroy {
         : `/api/dm/messages/${encodeURIComponent(entry.username || '')}`;
     this.http.get<any>(url, { headers: this.authHeaders() }).subscribe(
       (data) => {
-        const messages = data?.messages ?? [];
+        const messages = (data?.messages ?? []).map((m: any) => this.toMessage(m));
         this.chatHistory = { ...this.chatHistory, [entry.key]: messages };
         this.applyReadState(entry.key, data?.read_state ?? []);
         this.scrollThreadToBottom();
@@ -716,11 +784,15 @@ export class ChatComponent implements OnInit, OnDestroy {
     const text = this.newMessage;
 
     const msg: Message = {
+      id: this.newId(),
       from: this.currentUser,
       to: e.key,
       message: text,
       datetime: new Date().toISOString(),
       status: 'sending',
+      reactions: [],
+      replyTo: this.replyingTo?.id ?? null,
+      replyPreview: this.replyingTo ? this.replyingTo.message : null,
     };
     const before = this.chatHistory[e.key] ?? [];
     this.chatHistory = { ...this.chatHistory, [e.key]: [...before, msg] };
@@ -728,6 +800,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     e.last_message_at = msg.datetime;
     this.scrollThreadToBottom();
     this.newMessage = '';
+    this.replyingTo = null;
 
     this.postMessage(e, text, msg);
   }
@@ -739,17 +812,24 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.socket.emit('send_message', {
         conversation_id: entry.conversationId,
         message: text,
+        client_message_id: msg.id,
+        reply_to: msg.replyTo ?? null,
       });
       req = this.http.post<any>(
         `/api/groups/${entry.conversationId}/messages`,
-        { body: text },
+        { body: text, client_message_id: msg.id, reply_to: msg.replyTo ?? null },
         { headers: this.authHeaders() }
       );
     } else {
-      this.socket.emit('send_message', { recipient: entry.username, message: text });
+      this.socket.emit('send_message', {
+        recipient: entry.username,
+        message: text,
+        client_message_id: msg.id,
+        reply_to: msg.replyTo ?? null,
+      });
       req = this.http.post<any>(
         '/api/dm/messages',
-        { to_username: entry.username, body: text },
+        { to_username: entry.username, body: text, client_message_id: msg.id, reply_to: msg.replyTo ?? null },
         { headers: this.authHeaders() }
       );
     }
@@ -769,5 +849,182 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (!e || msg.status === 'sending') return;
     msg.status = 'sending';
     this.postMessage(e, msg.message, msg);
+  }
+
+  // --- message actions: shared --------------------------------------------
+  isOwn(msg: Message): boolean {
+    return msg.from === this.currentUser;
+  }
+
+  /** Locate a message across every loaded thread by its globally-unique id. */
+  private findMessage(id: string | null | undefined): Message | null {
+    if (!id) return null;
+    for (const key of Object.keys(this.chatHistory)) {
+      const hit = this.chatHistory[key].find((m) => m.id === id);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // --- action overlay open/close ------------------------------------------
+  toggleActions(msg: Message): void {
+    this.activeMsgId = this.activeMsgId === msg.id ? null : msg.id ?? null;
+    this.menuOpenId = null;
+    this.pickerOpenId = null;
+  }
+
+  toggleMenu(msg: Message, event: Event): void {
+    event.stopPropagation();
+    this.menuOpenId = this.menuOpenId === msg.id ? null : msg.id ?? null;
+    this.pickerOpenId = null;
+  }
+
+  togglePicker(msg: Message, event: Event): void {
+    event.stopPropagation();
+    this.pickerOpenId = this.pickerOpenId === msg.id ? null : msg.id ?? null;
+  }
+
+  closeOverlays(): void {
+    this.activeMsgId = null;
+    this.menuOpenId = null;
+    this.pickerOpenId = null;
+  }
+
+  // --- message actions: reactions -----------------------------------------
+  /** Merge authoritative counts while preserving *my* reaction flags locally
+   * (only my own toggles ever change my `mine`, so it's safe to keep them). */
+  private mergeReactions(incoming: Reaction[], current: Reaction[] | undefined): Reaction[] {
+    const cur = current ?? [];
+    return (incoming ?? []).map((r) => ({
+      emoji: r.emoji,
+      count: r.count,
+      mine: cur.find((c) => c.emoji === r.emoji)?.mine ?? false,
+    }));
+  }
+
+  toggleReaction(msg: Message, emoji: string): void {
+    if (!msg.id || msg.deleted) return;
+    const list = (msg.reactions ?? []).map((r) => ({ ...r }));
+    const found = list.find((r) => r.emoji === emoji);
+    if (found && found.mine) {
+      found.count -= 1;
+      found.mine = false;
+    } else if (found) {
+      found.count += 1;
+      found.mine = true;
+    } else {
+      list.push({ emoji, count: 1, mine: true });
+    }
+    msg.reactions = list.filter((r) => r.count > 0);
+    this.closeOverlays();
+    this.http
+      .post<any>(`/api/messages/${msg.id}/react`, { emoji }, { headers: this.authHeaders() })
+      .subscribe({
+        next: (res) => {
+          msg.reactions = this.mergeReactions(res?.reactions ?? [], msg.reactions);
+        },
+        error: (err) => this.redirectIfUnauth(err),
+      });
+  }
+
+  private onReactionUpdated(d: any): void {
+    const msg = this.findMessage(d?.client_message_id);
+    if (!msg) return;
+    msg.reactions = this.mergeReactions(d?.reactions ?? [], msg.reactions);
+    this.chatHistory = { ...this.chatHistory };
+  }
+
+  // --- message actions: reply ---------------------------------------------
+  startReply(msg: Message): void {
+    this.replyingTo = msg;
+    this.closeOverlays();
+    setTimeout(() => {
+      const el = document.querySelector<HTMLTextAreaElement>('.message-input__field');
+      el?.focus();
+    });
+  }
+
+  cancelReply(): void {
+    this.replyingTo = null;
+  }
+
+  /** Display name to show in the composer "Replying to …" chip. */
+  replyName(msg: Message): string {
+    if (msg.from === this.currentUser) return 'yourself';
+    const entry = this.conversations.find((c) => c.kind === 'direct' && c.username === msg.from);
+    return entry?.displayName ?? msg.from;
+  }
+
+  scrollToMessage(id: string | null | undefined): void {
+    if (!id) return;
+    const el = document.getElementById('msg-' + id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    this.highlightedId = id;
+    setTimeout(() => this.zone.run(() => (this.highlightedId = null)), 1200);
+  }
+
+  // --- message actions: edit + delete -------------------------------------
+  startEdit(msg: Message): void {
+    if (!this.isOwn(msg) || !msg.id) return;
+    this.editingId = msg.id;
+    this.editText = msg.message;
+    this.closeOverlays();
+  }
+
+  cancelEdit(): void {
+    this.editingId = null;
+    this.editText = '';
+  }
+
+  saveEdit(msg: Message): void {
+    const text = this.editText.trim();
+    if (!msg.id || !text) return;
+    this.http
+      .patch<any>(`/api/messages/${msg.id}`, { body: text }, { headers: this.authHeaders() })
+      .subscribe({
+        next: (res) => {
+          msg.message = res?.body ?? text;
+          msg.editedAt = res?.edited_at ?? new Date().toISOString();
+          this.cancelEdit();
+        },
+        error: (err) => {
+          this.cancelEdit();
+          this.redirectIfUnauth(err);
+        },
+      });
+  }
+
+  deleteMessage(msg: Message): void {
+    if (!this.isOwn(msg) || !msg.id) return;
+    this.closeOverlays();
+    if (!confirm('Delete this message?')) return;
+    this.http
+      .delete<any>(`/api/messages/${msg.id}`, { headers: this.authHeaders() })
+      .subscribe({
+        next: () => {
+          msg.deleted = true;
+          msg.message = '';
+          msg.reactions = [];
+        },
+        error: (err) => this.redirectIfUnauth(err),
+      });
+  }
+
+  private onMessageEdited(d: any): void {
+    const msg = this.findMessage(d?.client_message_id);
+    if (!msg) return;
+    msg.message = d?.body ?? msg.message;
+    msg.editedAt = d?.edited_at ?? msg.editedAt;
+    this.chatHistory = { ...this.chatHistory };
+  }
+
+  private onMessageDeleted(d: any): void {
+    const msg = this.findMessage(d?.client_message_id);
+    if (!msg) return;
+    msg.deleted = true;
+    msg.message = '';
+    msg.reactions = [];
+    this.chatHistory = { ...this.chatHistory };
   }
 }

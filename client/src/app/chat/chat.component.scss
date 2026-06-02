@@ -1008,3 +1008,399 @@ input:focus,
     height: auto !important;
   }
 }
+
+// ── Message actions: reactions, reply, edit/delete ─────────────────────────
+.message-row {
+  position: relative;
+}
+
+.message-bubble {
+  position: relative;
+  cursor: default;
+}
+
+// Bubble + side ⋯ grouped into a shrink-to-content cluster, so hover only
+// covers the message itself (not the full-width row) and the ⋯ sits right
+// beside the bubble. Sent rows mirror the order so ⋯ is on the bubble's left.
+.message-cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  min-width: 0;
+  max-width: min(85%, 32rem);
+
+  .message-row--sent & {
+    flex-direction: row-reverse;
+  }
+
+  // Let the bubble shrink (and wrap) so the ⋯ always has room; the cluster
+  // caps the overall width.
+  .message-bubble {
+    min-width: 0;
+    max-width: none;
+    flex: 0 1 auto;
+  }
+}
+
+// Quick-react bar floating above the bubble (+ side ⋯ menu).
+.msg-actions {
+  position: absolute;
+  top: -18px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-radius: 999px;
+  padding: 2px 5px;
+  box-shadow: 0 6px 18px rgba(43, 10, 44, 0.18);
+  z-index: 6;
+  // Hidden until hover (desktop) or tap-active (mobile); see reveal rules below.
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity $rojin-dur-fast $rojin-ease, transform $rojin-dur-fast $rojin-ease;
+
+  .message-bubble--sent & {
+    left: auto;
+    right: 6px;
+  }
+
+  &__react {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+  }
+
+  &__emoji,
+  &__more {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 3px;
+    border-radius: 50%;
+    transition: transform $rojin-dur-fast $rojin-ease, background $rojin-dur-fast $rojin-ease;
+  }
+
+  &__emoji:hover,
+  &__more:hover {
+    background: rgba(176, 141, 87, 0.18);
+    transform: scale(1.12);
+  }
+
+  &__more {
+    color: $rojin-ink-soft;
+    font-weight: 700;
+  }
+}
+
+// Reveal the quick-react bar on hover (desktop) or when tap-active (mobile).
+.message-cluster:hover .msg-actions,
+.message-bubble--active .msg-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.emoji-picker {
+  position: absolute;
+  top: -8px;
+  left: 6px;
+  transform: translateY(-100%);
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  width: 260px;
+  max-width: 70vw;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-radius: $rojin-radius-md;
+  padding: 6px;
+  box-shadow: 0 12px 28px rgba(43, 10, 44, 0.22);
+  z-index: 7;
+
+  .message-bubble--sent & {
+    left: auto;
+    right: 6px;
+  }
+
+  &__item {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 17px;
+    padding: 4px;
+    border-radius: 7px;
+  }
+
+  &__item:hover {
+    background: rgba(176, 141, 87, 0.18);
+  }
+}
+
+// The ⋯ sits in the side gutter beside the bubble (in-flow flex item inside
+// the cluster; the cluster's row-reverse on sent rows puts it on the left).
+.msg-dots-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.msg-dots {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: rgba(58, 14, 60, 0.05);
+  color: $rojin-ink-soft;
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity $rojin-dur-fast $rojin-ease;
+}
+
+.message-cluster:hover .msg-dots,
+.message-bubble--active ~ .msg-dots-wrap .msg-dots {
+  opacity: 1;
+}
+
+.msg-dots:hover {
+  background: rgba(176, 141, 87, 0.18);
+}
+
+.msg-menu {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 8;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-radius: $rojin-radius-sm;
+  box-shadow: 0 10px 24px rgba(43, 10, 44, 0.22);
+  padding: 5px;
+  min-width: 132px;
+
+  .message-row--sent & {
+    right: auto;
+    left: 0;
+  }
+
+  &__item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 7px 12px;
+    font-size: 13px;
+    color: $rojin-ink;
+    border-radius: 7px;
+  }
+
+  &__item:hover {
+    background: rgba(176, 141, 87, 0.12);
+  }
+
+  &__item--danger {
+    color: #a23b4d;
+  }
+}
+
+.reaction-pills {
+  display: flex;
+  gap: 5px;
+  margin: 4px 2px 0;
+  flex-wrap: wrap;
+
+  &--sent {
+    justify-content: flex-end;
+  }
+}
+
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: $rojin-ink;
+
+  &--mine {
+    background: rgba(176, 141, 87, 0.18);
+    border-color: $rojin-gold;
+  }
+
+  &__n {
+    font-weight: 700;
+    font-size: 11px;
+    color: $rojin-ink-soft;
+  }
+}
+
+// In-thread reply quote (text only) + composer "replying to" chip.
+.reply-quote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  background: rgba(74, 21, 75, 0.06);
+  border-left: 3px solid $rojin-gold;
+  border-radius: 8px;
+  padding: 4px 9px;
+  margin-bottom: 4px;
+
+  .message-bubble--sent & {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  &__icon {
+    color: $rojin-gold;
+    font-size: 12px;
+  }
+
+  &__text {
+    font-size: 12px;
+    color: $rojin-ink-soft;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    .message-bubble--sent & {
+      color: rgba(247, 242, 232, 0.82);
+    }
+  }
+}
+
+.message-input--replying {
+  flex-wrap: wrap;
+}
+
+.reply-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+  background: $rojin-paper;
+  border: 1px solid $rojin-line;
+  border-left: 3px solid $rojin-gold;
+  border-radius: $rojin-radius-sm;
+  padding: 6px 11px;
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__who {
+    font-size: 11.5px;
+    color: $rojin-primary;
+    font-weight: 600;
+  }
+
+  &__text {
+    font-size: 12px;
+    color: $rojin-ink-soft;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__x {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: $rojin-ink-soft;
+    font-size: 14px;
+  }
+}
+
+// Inline edit, tombstone, edited marker.
+.message-bubble--deleted {
+  opacity: 0.85;
+}
+
+.message-bubble__tomb {
+  font-style: italic;
+  color: $rojin-ink-soft;
+  font-size: 13px;
+}
+
+.message-bubble__edited {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.message-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__field {
+    width: 100%;
+    min-width: 200px;
+    resize: vertical;
+    font: inherit;
+    border: 1px solid $rojin-gold-soft;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: $rojin-paper;
+    color: $rojin-ink;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  &__save,
+  &__cancel {
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 8px;
+  }
+
+  &__save {
+    background: $rojin-gold;
+    color: #2b1a06;
+  }
+
+  &__cancel {
+    background: rgba(58, 14, 60, 0.08);
+    color: $rojin-ink-soft;
+  }
+}
+
+// Flash the original after a reply scroll-to.
+.message-row--flash .message-bubble {
+  animation: msg-flash 1.2s ease-out;
+}
+
+@keyframes msg-flash {
+  0%,
+  30% {
+    box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.55);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
