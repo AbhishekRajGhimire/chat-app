@@ -92,7 +92,10 @@ This is **optional hardening** for office Wi‑Fi; HTTP on a trusted LAN remains
 ## PWA & notifications
 
 - **PWA shell — delivered.** The client is installable via `@angular/pwa` (ngsw): web app manifest (charcoal theme, chat-bubble icon), app-shell prefetch caching, `/api` + `/socket.io` never cached. Works on `localhost` today; **phone install needs the HTTPS step above** (service workers require a secure context).
-- **Web Push — delivered.** True notifications when the app is closed: VAPID keys, a `PushSubscription` table per user, a custom service worker (`public/sw-custom.js`) wrapping ngsw with focus-aware push + click-to-open, and the Flask backend sending pushes via `pywebpush` on new DM + group messages (opt-in via the Profile toggle). Requires the HTTPS harness to test on a device. **This completes the Notifications + PWA arc.**
+- **Web Push — code delivered; activation pending.** True notifications when the app is closed: VAPID keys, a `PushSubscription` table per user, a custom service worker (`public/sw-custom.js`) wrapping ngsw with focus-aware push + click-to-open, and the Flask backend sending pushes via `pywebpush` on new DM + group messages (opt-in via the Profile toggle). The code is implemented and unit-tested (27 backend tests green), but:
+>   **Where we left off (pick up here):** no VAPID keys are configured yet, so push is currently **disabled at runtime** (the Profile toggle shows "not available" until keys exist). To turn it on: generate a VAPID keypair into `backend/.env` (one-liner in `backend/.env.example`), then test on a real device via the HTTPS harness (`deployment/serve-https.ps1` → install the PWA → Profile → Enable notifications). The end-to-end banner has **not been verified on a device yet**.
+>
+>   This completes the Notifications + PWA **build** arc; only the key-generation + on-device verification remain.
 
 ---
 
