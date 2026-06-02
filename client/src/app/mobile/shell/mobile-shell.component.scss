@@ -1,9 +1,19 @@
 @import '../../ui/styles/tokens';
 
-:host { display: block; height: 100%; }
+// Anchor the whole phone shell to the dynamic viewport height so it never
+// depends on the app-root/body height chain (which isn't 100%-tall). dvh
+// also tracks the mobile browser's collapsing URL bar.
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
 
 .m-shell {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: $rojin-canvas;
