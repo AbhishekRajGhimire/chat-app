@@ -20,7 +20,7 @@
   </button>
 </header>
 
-<div class="mt-scroll" #scrollHost>
+<div class="mt-scroll" #scrollHost appSwipeBack (swipeBack)="back()">
   <app-message-thread
     [thread]="store.openThread()"
     [readState]="store.readState()[store.selectedKey()] || {}"

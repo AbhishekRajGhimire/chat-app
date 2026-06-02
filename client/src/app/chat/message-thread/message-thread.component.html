@@ -15,7 +15,8 @@
         [attr.id]="message.id ? 'msg-' + message.id : null"
         [class.message-row--group-start]="!isContinuation(thread, i)"
         [class.message-row--grouped]="isGroup"
-        [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'">
+        [ngClass]="message.from === currentUser ? 'message-row--sent' : 'message-row--received'"
+        appSwipeToReply (swipeReply)="reply.emit(message)">
         <div class="message-cluster">
         <div
           class="message-bubble"
@@ -23,7 +24,8 @@
           [class.message-bubble--deleted]="message.deleted"
           [class.message-bubble--active]="activeMsgId === message.id"
           (click)="message.id && !message.deleted && toggleActions(message); $event.stopPropagation()"
-          [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'">
+          [ngClass]="message.from === currentUser ? 'message-bubble--sent' : 'message-bubble--received'"
+          appLongPress (longPress)="toggleActions(message)">
 
           @if (message.replyTo && message.replyPreview) {
             <button type="button" class="reply-quote" (click)="onScrollToOriginal(message.replyTo); $event.stopPropagation()">

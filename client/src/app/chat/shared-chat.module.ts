@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { UiModule } from '../ui/ui.module';
 import { MessageThreadComponent } from './message-thread/message-thread.component';
+import { GesturesModule } from '../mobile/gestures/gestures.module';
 
 /**
  * Presentational chat pieces shared between the desktop host and (later) the
@@ -12,7 +13,7 @@ import { MessageThreadComponent } from './message-thread/message-thread.componen
  */
 @NgModule({
   declarations: [MessageThreadComponent],
-  imports: [CommonModule, FormsModule, MatIconModule, UiModule],
-  exports: [MessageThreadComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, UiModule, GesturesModule],
+  exports: [MessageThreadComponent, GesturesModule],
 })
 export class SharedChatModule {}

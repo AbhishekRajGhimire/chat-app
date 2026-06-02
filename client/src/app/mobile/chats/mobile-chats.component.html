@@ -5,7 +5,7 @@
   </a>
 </header>
 
-<div class="m-list">
+<div class="m-list" appPullToRefresh (refresh)="store.loadConversations()">
   @for (entry of store.sortedConversations(); track entry.key) {
     @if (!(entry.kind === 'direct' && entry.username === store.currentUser)) {
       <button type="button" class="m-row" (click)="open(entry)">
