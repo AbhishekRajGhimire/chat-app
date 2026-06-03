@@ -40,6 +40,7 @@ export function toEntry(raw: RawConversation): ConversationEntry {
       last_message: raw.last_message ?? null,
       last_message_at: raw.last_message_at ?? null,
       unreadCount: raw.unread_count ?? 0,
+      avatarUrl: raw.avatar_url ?? null,
     };
   }
   return {

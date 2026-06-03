@@ -1,8 +1,8 @@
 """Group conversation REST endpoints (flat membership: any member can manage)."""
 import datetime
 
-from flask import jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask import jsonify, request, send_file
+from flask_jwt_extended import decode_token, get_jwt_identity, jwt_required
 
 from chat import app, socketio
 from .chatfunc import add_user_to_live_room
@@ -11,6 +11,7 @@ from .conversations import (
     attachments_for,
     conversation_room,
     create_group_conversation,
+    group_avatar_path,
     group_members,
     is_member,
     link_attachments,
@@ -21,6 +22,7 @@ from .conversations import (
 )
 from .database import connection, cursor
 from .push import send_push_to_user
+from . import storage
 
 
 def _utc_now_iso() -> str:
@@ -44,13 +46,14 @@ def _require_member(cid: int):
 
 
 def _group_summary(cid: int) -> dict:
-    cursor.execute("SELECT title FROM Conversation WHERE id=? AND type='group'", (cid,))
+    cursor.execute("SELECT title, avatar_key FROM Conversation WHERE id=? AND type='group'", (cid,))
     row = cursor.fetchone()
     members = group_members(cid)
     return {
         "kind": "group",
         "conversation_id": cid,
         "title": (row[0] if row else None) or "Group",
+        "avatar_url": group_avatar_path(cid, row[1] if row else None),
         "members": members,
         "member_count": len(members),
     }
@@ -229,3 +232,63 @@ def post_group_message(cid):
                 })
     return jsonify({"message": "ok", "datetime": now, "client_message_id": cmid,
                     "attachments": attachments_for(cmid)}), 201
+
+
+@app.route("/api/groups/<int:cid>/avatar", methods=["POST"])
+@jwt_required()
+def upload_group_avatar(cid):
+    _, err = _require_member(cid)
+    if err:
+        return err
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"error": "file required"}), 400
+    mime = f.mimetype or ""
+    if not mime.startswith("image/"):
+        return jsonify({"error": "image required"}), 400
+    cursor.execute("SELECT avatar_key FROM Conversation WHERE id=? AND type='group'", (cid,))
+    row = cursor.fetchone()
+    old_key = row[0] if row else None
+    key, _size = storage.save(f)
+    cursor.execute("UPDATE Conversation SET avatar_key=?, avatar_mime=? WHERE id=?", (key, mime, cid))
+    connection.commit()
+    if old_key:
+        storage.delete(old_key)
+    return jsonify(_group_summary(cid))
+
+
+@app.route("/api/groups/<int:cid>/avatar", methods=["DELETE"])
+@jwt_required()
+def delete_group_avatar(cid):
+    _, err = _require_member(cid)
+    if err:
+        return err
+    cursor.execute("SELECT avatar_key FROM Conversation WHERE id=? AND type='group'", (cid,))
+    row = cursor.fetchone()
+    old_key = row[0] if row else None
+    cursor.execute("UPDATE Conversation SET avatar_key=NULL, avatar_mime=NULL WHERE id=?", (cid,))
+    connection.commit()
+    if old_key:
+        storage.delete(old_key)
+    return jsonify(_group_summary(cid))
+
+
+@app.route("/api/groups/<int:cid>/avatar", methods=["GET"])
+def serve_group_avatar(cid):
+    token = request.args.get("token", "")
+    try:
+        sub = decode_token(token).get("sub")
+    except Exception:
+        sub = None
+    uid = _uid(sub) if sub else None
+    if uid is None:
+        return jsonify({"error": "auth required"}), 401
+    if not is_member(cid, uid):
+        return jsonify({"error": "forbidden"}), 403
+    cursor.execute("SELECT avatar_key, avatar_mime FROM Conversation WHERE id=? AND type='group'", (cid,))
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return jsonify({"error": "not found"}), 404
+    resp = send_file(storage.open_path(row[0]), mimetype=row[1] or "image/jpeg", as_attachment=False)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp

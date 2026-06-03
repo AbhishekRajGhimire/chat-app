@@ -28,7 +28,11 @@
           [ngClass]="{ active: store.selectedKey() === entry.key }">
           <span class="dm-row" [class.is-unread]="(entry.unreadCount || 0) > 0">
             @if (entry.kind === 'group') {
-              <span class="group-mono">{{ monogram(entry.displayName) }}</span>
+              @if (entry.avatarUrl) {
+                <app-avatar [name]="entry.displayName" [seed]="entry.key" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
+              } @else {
+                <span class="group-mono">{{ monogram(entry.displayName) }}</span>
+              }
             } @else {
               <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
             }
@@ -111,7 +115,11 @@
             <mat-icon>arrow_back</mat-icon>
           </button>
           @if (isGroupOpen) {
-            <span class="chat-header__mono">{{ monogram(headerTitle) }}</span>
+            @if (selectedEntry?.avatarUrl) {
+              <app-avatar class="chat-header__avatar" [name]="headerTitle" [seed]="selectedEntry?.key || ''" [imageUrl]="avatarSrc(selectedEntry?.avatarUrl)" [size]="34"></app-avatar>
+            } @else {
+              <span class="chat-header__mono">{{ monogram(headerTitle) }}</span>
+            }
           } @else {
             <app-avatar class="chat-header__avatar" [name]="headerTitle" [seed]="selectedUser" [imageUrl]="avatarSrc(selectedEntry?.avatarUrl)" [size]="34"></app-avatar>
           }
@@ -135,6 +143,11 @@
           <div class="member-panel">
             <div class="member-panel__head">
               <span class="member-panel__title">Members</span>
+              <button type="button" class="member-panel__photo" (click)="groupPhotoInput.click()">Change photo</button>
+              <input #groupPhotoInput type="file" accept="image/*" hidden (change)="onPickGroupAvatar($event)">
+              @if (selectedEntry?.avatarUrl) {
+                <button type="button" class="member-panel__photo" (click)="removeGroupAvatar()">Remove photo</button>
+              }
               <button type="button" class="member-panel__leave" (click)="leaveGroup()">Leave group</button>
             </div>
             <div class="member-panel__list">

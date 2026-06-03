@@ -142,6 +142,13 @@ def reactions_for(client_message_id: str, me_id: int) -> list:
     ]
 
 
+def group_avatar_path(cid: int, avatar_key) -> str | None:
+    """Cache-busted group-avatar URL path (or None). Caller appends &token=."""
+    if not avatar_key:
+        return None
+    return f"/api/groups/{cid}/avatar?v={avatar_key[:8]}"
+
+
 def attachments_for(client_message_id: str) -> list:
     if not client_message_id:
         return []

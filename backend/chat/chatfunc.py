@@ -9,6 +9,7 @@ from .conversations import (
     attachments_for,
     conversation_room,
     get_or_create_direct_conversation,
+    group_avatar_path,
     group_members,
     is_member,
     link_attachments,
@@ -249,7 +250,8 @@ def get_chats_history():
             (SELECT m.body FROM Message m WHERE m.conversation_id = c.id
              ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message,
             (SELECT m.created_at FROM Message m WHERE m.conversation_id = c.id
-             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at
+             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at,
+            c.avatar_key
         FROM Conversation c
         JOIN ConversationMember cm ON cm.conversation_id = c.id AND cm.user_id = ?
         WHERE c.type = 'group'
@@ -265,6 +267,7 @@ def get_chats_history():
             "last_message": r[3],
             "last_message_at": r[4],
             "unread_count": unread_count(int(r[0]), me_id),
+            "avatar_url": group_avatar_path(int(r[0]), r[5]),
         }
         for r in cursor.fetchall()
     ]

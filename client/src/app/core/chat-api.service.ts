@@ -76,6 +76,14 @@ export class ChatApi {
   leaveGroup(cid: number): Observable<any> {
     return this.http.post<any>(`/api/groups/${cid}/leave`, {}, { headers: this.headers() });
   }
+  uploadGroupAvatar(cid: number, file: File): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<any>(`/api/groups/${cid}/avatar`, form, { headers: this.headers() });
+  }
+  deleteGroupAvatar(cid: number): Observable<any> {
+    return this.http.delete<any>(`/api/groups/${cid}/avatar`, { headers: this.headers() });
+  }
   uploadAvatar(file: File): Observable<any> {
     const form = new FormData();
     form.append('file', file);

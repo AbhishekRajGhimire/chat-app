@@ -104,14 +104,14 @@ If the peer is **offline**, the Socket.IO emit reaches **no sockets** in room `P
 |-------|---------|----------------|
 | **User** | Accounts | `id`, `username` (unique), `password` (bcrypt hash) |
 | **UserProfile** | Optional profile | `user_id` PK/FK → `User`, `display_name`, `bio`, `updated_at`; **`avatar_key`** (storage key via `chat/storage.py`) + **`avatar_mime`** for the uploaded photo; computed `avatar_url` (`/api/avatars/<username>?v=<key[:8]>`) is never stored — it is derived on read |
-| **Conversation** | Thread (DM or future group) | `id`, `type` (`direct` \| `group`), `title`, `created_at`, `dm_user_low_id` / `dm_user_high_id` for direct pair (normalized, unique) |
+| **Conversation** | Thread (DM or group) | `id`, `type` (`direct` \| `group`), `title`, `created_at`, `dm_user_low_id` / `dm_user_high_id` for direct pair (normalized, unique); **`avatar_key`** + **`avatar_mime`** for an optional group photo (stored via `chat/storage.py`); computed cache-busted **`avatar_url`** (`/api/groups/<id>/avatar?v=<key[:8]>`) is derived on read and included in `_group_summary` + `chats_history` group rows |
 | **ConversationMember** | Membership | `(conversation_id, user_id)` PK, `role`, `joined_at` |
 | **Message** | History | `id`, `conversation_id`, `sender_user_id`, `body`, `created_at`; optional `client_message_id` |
 | **MessageAttachment** | Files linked to a message | `id`, `client_message_id`, `conversation_id`, `uploader_user_id`, `storage_key`, `filename`, `mime`, `size`, `kind` (`image`\|`file`), `created_at`; `serialize_messages` includes an `attachments` array per message payload |
 
 Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message` table (if present) is **dropped on startup** so the file can move to the conversation model without manual SQL (dev-oriented).
 
-The person feeds — **`chats_history`**, **`directory_users`**, group-members list, and **`serialize_messages`** (per-message sender info) — all include a computed, cache-busted **`avatar_url`** / **`sender_avatar_url`** field (`/api/avatars/<username>?v=<key[:8]>`, or `null` if no avatar is set).
+The person feeds — **`chats_history`**, **`directory_users`**, group-members list, and **`serialize_messages`** (per-message sender info) — all include a computed, cache-busted **`avatar_url`** / **`sender_avatar_url`** field (`/api/avatars/<username>?v=<key[:8]>`, or `null` if no avatar is set). Group conversation rows in `chats_history` and `_group_summary` likewise carry a computed **`avatar_url`** pointing at `GET /api/groups/<id>/avatar?v=<key[:8]>` (or `null` if no group photo is set).
 
 ---
 
@@ -138,6 +138,9 @@ The person feeds — **`chats_history`**, **`directory_users`**, group-members l
 | DELETE | `/api/groups/<id>/members/<username>` | Yes | Remove member from group |
 | GET | `/api/groups/<id>/messages` | Yes | Group message history |
 | POST | `/api/groups/<id>/messages` | Yes | Post message to group; accepts optional `attachment_ids` array |
+| POST | `/api/groups/<id>/avatar` | Yes | Multipart upload of a group photo (image MIME types only, member-only); stores bytes via `chat/storage.py` into `Conversation.avatar_key` + `avatar_mime`; returns updated group summary with `avatar_url` |
+| DELETE | `/api/groups/<id>/avatar` | Yes | Remove the group photo (member-only); clears `avatar_key` + `avatar_mime`; returns updated group summary with `avatar_url: null` |
+| GET | `/api/groups/<id>/avatar?token=` | No* | Serve group avatar bytes **members-only** (`is_member` check); `token` query param decoded manually (mirrors the Socket.IO `?token=` pattern); served `inline` + `X-Content-Type-Options: nosniff`; 401 bad/missing token, 403 non-member, 404 no photo set |
 | POST | `/api/attachments` | Yes | Multipart upload (≤ 25 MB); returns `{ id, filename, mime, size, kind }` (`kind` = `image` \| `file`) |
 | GET | `/api/attachments/<id>?token=` | No* | Serve attachment bytes; `token` query param decoded manually (mirrors the Socket.IO `?token=` pattern); membership-checked; images served `inline`, other files as `Content-Disposition: attachment` + `X-Content-Type-Options: nosniff`; 404 if the parent message is deleted |
 | POST | `/api/me/avatar` | Yes | Multipart upload of a profile photo (image MIME types only); stores bytes via `chat/storage.py` into `UserProfile.avatar_key` + `avatar_mime`; returns updated profile with `avatar_url` |

@@ -746,6 +746,13 @@ input:focus,
     font-size: 12px;
     cursor: pointer;
   }
+  &__photo {
+    border: none;
+    background: none;
+    color: $rojin-ink-soft;
+    font-size: 12px;
+    cursor: pointer;
+  }
   &__list {
     display: flex;
     flex-direction: column;

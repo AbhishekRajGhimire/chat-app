@@ -79,6 +79,9 @@
   }
 }
 
+// Group avatar tap target
+.mt-avatar-btn { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
+
 // Group monogram
 .mt-mono {
   flex-shrink: 0;
