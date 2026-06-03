@@ -211,6 +211,14 @@ for _col in ("avatar_key", "avatar_mime"):
         cursor.execute(f"ALTER TABLE UserProfile ADD COLUMN {_col} TEXT")
 connection.commit()
 
+# Idempotent: avatar columns on Conversation (group photos).
+cursor.execute("PRAGMA table_info(Conversation)")
+_conv_cols = {row[1] for row in cursor.fetchall()}
+for _col in ("avatar_key", "avatar_mime"):
+    if _col not in _conv_cols:
+        cursor.execute(f"ALTER TABLE Conversation ADD COLUMN {_col} TEXT")
+connection.commit()
+
 # Give pre-existing messages stable public ids.
 _backfill_client_message_ids()
 

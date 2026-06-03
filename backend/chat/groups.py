@@ -11,6 +11,7 @@ from .conversations import (
     attachments_for,
     conversation_room,
     create_group_conversation,
+    group_avatar_path,
     group_members,
     is_member,
     link_attachments,
@@ -44,13 +45,14 @@ def _require_member(cid: int):
 
 
 def _group_summary(cid: int) -> dict:
-    cursor.execute("SELECT title FROM Conversation WHERE id=? AND type='group'", (cid,))
+    cursor.execute("SELECT title, avatar_key FROM Conversation WHERE id=? AND type='group'", (cid,))
     row = cursor.fetchone()
     members = group_members(cid)
     return {
         "kind": "group",
         "conversation_id": cid,
         "title": (row[0] if row else None) or "Group",
+        "avatar_url": group_avatar_path(cid, row[1] if row else None),
         "members": members,
         "member_count": len(members),
     }
