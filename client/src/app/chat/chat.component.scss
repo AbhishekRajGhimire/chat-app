@@ -312,6 +312,34 @@
   }
 }
 
+.search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.search-result__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-toolbar__me {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow $rojin-dur-fast $rojin-ease;
+
+  &:hover {
+    box-shadow: 0 0 0 2px $rojin-gold;
+  }
+}
+
 .search-result-name {
   font-family: $rojin-font-display;
   font-size: 13.5px;

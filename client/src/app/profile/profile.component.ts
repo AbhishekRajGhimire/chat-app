@@ -5,6 +5,7 @@ import { ProfileService, UserProfile } from '../profile.service';
 import { PushService } from '../push.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ChatApi } from '../core/chat-api.service';
+import { ChatStore } from '../core/chat-store.service';
 import { AvatarCropperComponent } from '../ui/avatar-cropper/avatar-cropper.component';
 import { avatarSrc } from '../core/avatar-url';
 
@@ -31,7 +32,8 @@ export class ProfileComponent implements OnInit {
     private router: Router,
     private push: PushService,
     private dialog: MatDialog,
-    private api: ChatApi
+    private api: ChatApi,
+    private store: ChatStore
   ) {}
 
   get avatarImage(): string | null {
@@ -45,14 +47,14 @@ export class ProfileComponent implements OnInit {
     this.dialog.open(AvatarCropperComponent, { data: { file }, panelClass: 'rojin-dialog', autoFocus: false })
       .afterClosed().subscribe((cropped?: File) => {
         if (cropped) this.api.uploadAvatar(cropped).subscribe({
-          next: (p) => { this.form.patchValue({ avatar_url: p.avatar_url ?? '' }); },
+          next: (p) => { this.form.patchValue({ avatar_url: p.avatar_url ?? '' }); this.store.setMyAvatarUrl(p.avatar_url ?? null); },
         });
       });
   }
 
   removeAvatar(): void {
     this.api.deleteAvatar().subscribe({
-      next: (p) => { this.form.patchValue({ avatar_url: p.avatar_url ?? '' }); },
+      next: (p) => { this.form.patchValue({ avatar_url: p.avatar_url ?? '' }); this.store.setMyAvatarUrl(p.avatar_url ?? null); },
     });
   }
 

@@ -58,6 +58,9 @@ export class ChatApi {
   directoryUsers(): Observable<DirectoryUser[]> {
     return this.http.get<DirectoryUser[]>('/api/directory_users', { headers: this.headers() });
   }
+  getMyProfile(): Observable<any> {
+    return this.http.get<any>('/api/me/profile', { headers: this.headers() });
+  }
   createGroup(title: string, members: string[]): Observable<any> {
     return this.http.post<any>('/api/groups', { title, members }, { headers: this.headers() });
   }

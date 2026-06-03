@@ -5,6 +5,7 @@ import { ProfileService, UserProfile } from '../../profile.service';
 import { AuthService } from '../../auth.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ChatApi } from '../../core/chat-api.service';
+import { ChatStore } from '../../core/chat-store.service';
 import { AvatarCropperComponent } from '../../ui/avatar-cropper/avatar-cropper.component';
 import { avatarSrc } from '../../core/avatar-url';
 
@@ -31,6 +32,7 @@ export class MobileProfileComponent implements OnInit {
     private authService: AuthService,
     private dialog: MatDialog,
     private api: ChatApi,
+    private store: ChatStore,
   ) {}
 
   get avatarImage(): string | null {
@@ -44,14 +46,14 @@ export class MobileProfileComponent implements OnInit {
     this.dialog.open(AvatarCropperComponent, { data: { file }, panelClass: 'rojin-dialog', autoFocus: false })
       .afterClosed().subscribe((cropped?: File) => {
         if (cropped) this.api.uploadAvatar(cropped).subscribe({
-          next: (p) => { this.avatarUrl = p.avatar_url ?? null; },
+          next: (p) => { this.avatarUrl = p.avatar_url ?? null; this.store.setMyAvatarUrl(p.avatar_url ?? null); },
         });
       });
   }
 
   removeAvatar(): void {
     this.api.deleteAvatar().subscribe({
-      next: (p) => { this.avatarUrl = p.avatar_url ?? null; },
+      next: (p) => { this.avatarUrl = p.avatar_url ?? null; this.store.setMyAvatarUrl(p.avatar_url ?? null); },
     });
   }
 

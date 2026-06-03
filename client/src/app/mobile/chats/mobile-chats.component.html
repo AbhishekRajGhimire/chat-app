@@ -1,7 +1,7 @@
 <header class="m-top">
   <h1 class="m-top__title">Chats</h1>
   <a routerLink="/m/profile" class="m-top__me" aria-label="Profile">
-    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [size]="32"></app-avatar>
+    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [imageUrl]="avatarSrc(store.myAvatarUrl())" [size]="32"></app-avatar>
   </a>
 </header>
 

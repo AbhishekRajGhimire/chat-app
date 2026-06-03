@@ -2,7 +2,9 @@
   <app-brand-lockup uiToolbarBrand [showTagline]="!compactToolbar"></app-brand-lockup>
   <ng-container uiToolbarActions>
     <span class="chat-toolbar__user">Welcome, {{ toolbarLabel }}</span>
-    <a mat-stroked-button color="accent" class="chat-toolbar__profile" routerLink="/profile">Profile</a>
+    <a class="chat-toolbar__me" routerLink="/profile" aria-label="Profile" matTooltip="Profile">
+      <app-avatar [name]="toolbarLabel" [seed]="store.currentUser" [imageUrl]="avatarSrc(store.myAvatarUrl())" [size]="36"></app-avatar>
+    </a>
     <button mat-raised-button color="warn" class="chat-toolbar__logout" type="button" (click)="logout()">
       Logout
     </button>
@@ -86,14 +88,18 @@
             }
             @for (entry of filteredUsers; track entry) {
               <mat-list-item (click)="selectDirect(entry.username)">
-                <app-avatar [name]="entry.display_name" [seed]="entry.username" [imageUrl]="avatarSrc(entry.avatar_url)" [size]="32"></app-avatar>
-                <span class="search-result-name">{{ entry.display_name }}</span>
-                @if (entry.display_name !== entry.username) {
-                  <span class="search-result-username">&#64;{{ entry.username }}</span>
-                }
-                @if (isUserOnline(entry.username)) {
-                  <span class="search-result-online">Online</span>
-                }
+                <span class="search-result">
+                  <app-avatar [name]="entry.display_name" [seed]="entry.username" [imageUrl]="avatarSrc(entry.avatar_url)" [size]="34"></app-avatar>
+                  <span class="search-result__text">
+                    <span class="search-result-name">{{ entry.display_name }}</span>
+                    @if (entry.display_name !== entry.username) {
+                      <span class="search-result-username">&#64;{{ entry.username }}</span>
+                    }
+                  </span>
+                  @if (isUserOnline(entry.username)) {
+                    <span class="search-result-online">Online</span>
+                  }
+                </span>
               </mat-list-item>
             }
           </mat-list>

@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { ChatStore } from '../../core/chat-store.service';
+import { avatarSrc } from '../../core/avatar-url';
 
 @Component({
   selector: 'app-mobile-calls',
@@ -8,5 +9,6 @@ import { ChatStore } from '../../core/chat-store.service';
   standalone: false,
 })
 export class MobileCallsComponent {
+  readonly avatarSrc = avatarSrc;
   constructor(public store: ChatStore) {}
 }
