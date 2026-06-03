@@ -22,6 +22,9 @@ dist/
 *.sqlite
 *.sqlite3
 
+# --- Uploaded file storage ---
+backend/uploads/
+
 # --- Node / Angular ---
 node_modules/
 dist/
