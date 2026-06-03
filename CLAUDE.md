@@ -117,6 +117,13 @@ Reactions, reply, and edit/delete all key on a **`client_message_id`** — a UUI
 
 Known follow-ups left from the upgrade: the unit test suite is pre-existing broken (unmaintained scaffold specs missing test providers); component SCSS still uses Sass `@import` (Dart Sass deprecates it in favor of `@use`); and the M3 theme is color-only (no amber accent / typography / density yet) — all slated for the visual-refresh phase.
 
+### File attachments
+- **Upload-first, keyed on `client_message_id`.** `POST /api/attachments` (multipart, ≤ 25 MB, JWT) uploads bytes and returns `{ id, filename, mime, size, kind }`. The normal send POST + socket payload carry `attachment_ids`; the backend links them to the `Message` row by `client_message_id` at send time.
+- **`chat/storage.py` is the only code that touches file bytes.** All read/write goes through this module — swap it for an S3/MinIO implementation in production without touching any other backend or client code.
+- **Token-in-URL serve, membership-checked.** `GET /api/attachments/<id>?token=<jwt>` decodes the JWT from the query string (same pattern as the Socket.IO `?token=` handshake), verifies the caller is a conversation member, and serves bytes. Images are served `inline`; all other files use `Content-Disposition: attachment` + `X-Content-Type-Options: nosniff` as an XSS guard. Files belonging to a deleted message return 404.
+- **`MessageAttachment` table + `serialize_messages`.** Schema: `client_message_id`, `conversation_id`, `uploader_user_id`, `storage_key`, `filename`, `mime`, `size`, `kind`, `created_at`. `conversations.serialize_messages` includes an `attachments` array on every message, used for both REST history and live socket events — consistent payload in both paths.
+- **Pending-tray upload state lives in `ChatStore`.** `addFiles` / `removePending` / `retryPending` manage per-file progress and retry. The shared `<app-attachment-tray>` component + 📎 button is mounted on both the desktop and mobile composers; `<app-message-thread>` renders the image grid + lightbox + file chips.
+
 ## Where to read next
 
 `README.md` is setup-focused. The deeper architecture lives in `docs/`:
