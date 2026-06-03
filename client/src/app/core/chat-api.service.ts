@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RawConversation, DirectoryUser } from './models/conversation.model';
-import { Reaction, ReadRow } from './models/message.model';
+import { Attachment, Reaction, ReadRow } from './models/message.model';
 
 @Injectable({ providedIn: 'root' })
 export class ChatApi {
@@ -21,14 +21,24 @@ export class ChatApi {
   getGroupMessages(cid: number): Observable<{ messages: any[]; read_state: ReadRow[] }> {
     return this.http.get<any>(`/api/groups/${cid}/messages`, { headers: this.headers() });
   }
-  postDm(toUsername: string, body: string, clientMessageId: string, replyTo: string | null): Observable<any> {
+  postDm(toUsername: string, body: string, clientMessageId: string, replyTo: string | null, attachmentIds: number[] = []): Observable<any> {
     return this.http.post<any>('/api/dm/messages',
-      { to_username: toUsername, body, client_message_id: clientMessageId, reply_to: replyTo },
+      { to_username: toUsername, body, client_message_id: clientMessageId, reply_to: replyTo, attachment_ids: attachmentIds },
       { headers: this.headers() });
   }
-  postGroup(cid: number, body: string, clientMessageId: string, replyTo: string | null): Observable<any> {
+  postGroup(cid: number, body: string, clientMessageId: string, replyTo: string | null, attachmentIds: number[] = []): Observable<any> {
     return this.http.post<any>(`/api/groups/${cid}/messages`,
-      { body, client_message_id: clientMessageId, reply_to: replyTo }, { headers: this.headers() });
+      { body, client_message_id: clientMessageId, reply_to: replyTo, attachment_ids: attachmentIds }, { headers: this.headers() });
+  }
+  uploadAttachment(file: File): Observable<HttpEvent<Attachment>> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<Attachment>('/api/attachments', form, {
+      headers: this.headers(), reportProgress: true, observe: 'events',
+    });
+  }
+  attachmentUrl(id: number): string {
+    return `/api/attachments/${id}?token=${localStorage.getItem('access_token')}`;
   }
   markDmRead(other: string): Observable<any> {
     return this.http.post<any>(`/api/dm/${encodeURIComponent(other)}/read`, {}, { headers: this.headers() });
