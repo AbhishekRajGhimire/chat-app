@@ -34,6 +34,27 @@
             </button>
           }
 
+          @if (message.attachments && message.attachments.length && !message.deleted) {
+            <div class="msg-attach">
+              @for (a of message.attachments; track a.id) {
+                @if (a.kind === 'image') {
+                  <button type="button" class="msg-attach__img" (click)="openLightbox(api.attachmentUrl(a.id)); $event.stopPropagation()">
+                    <img [src]="api.attachmentUrl(a.id)" [alt]="a.filename" loading="lazy">
+                  </button>
+                } @else {
+                  <a class="msg-attach__file" [href]="api.attachmentUrl(a.id)" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+                    <span class="msg-attach__ic">{{ fileIcon(a.mime) }}</span>
+                    <span class="msg-attach__meta">
+                      <span class="msg-attach__name">{{ a.filename }}</span>
+                      <span class="msg-attach__size">{{ prettySize(a.size) }}</span>
+                    </span>
+                    <span class="msg-attach__dl">⤓</span>
+                  </a>
+                }
+              }
+            </div>
+          }
+
           @if (message.deleted) {
             <div class="message-bubble__tomb">🚫 This message was deleted</div>
           } @else if (editingId === message.id) {
@@ -114,5 +135,12 @@
         </div>
       }
     }
+  </div>
+}
+
+@if (lightboxUrl) {
+  <div class="lightbox" (click)="closeLightbox()">
+    <img [src]="lightboxUrl" alt="">
+    <button type="button" class="lightbox__x" (click)="closeLightbox()">✕</button>
   </div>
 }

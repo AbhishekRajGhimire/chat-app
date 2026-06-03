@@ -51,10 +51,17 @@ export class MobileThreadComponent implements OnInit {
   }
 
   send(): void {
-    if (!this.newMessage.trim()) return;
+    const hasReady = this.store.pendingAttachments().some((p) => p.status === 'done');
+    if (!this.newMessage.trim() && !hasReady) return;
     this.store.sendMessage(this.entry, this.newMessage, this.replyingTo);
     this.newMessage = '';
     this.replyingTo = null;
+  }
+
+  onFilesPicked(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    if (input.files?.length) this.store.addFiles(input.files);
+    input.value = '';
   }
 
   onKeydown(e: KeyboardEvent): void {

@@ -1,9 +1,10 @@
 import { Injectable, NgZone, computed, signal } from '@angular/core';
+import { HttpEventType } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { ChatApi } from './chat-api.service';
 import { RealtimeClient } from './realtime-client.service';
-import { Message, Reaction } from './models/message.model';
+import { Attachment, Message, PendingAttachment, Reaction } from './models/message.model';
 import { ConversationEntry, toEntry } from './models/conversation.model';
 
 /**
@@ -26,6 +27,9 @@ export class ChatStore {
   readonly typingFrom = signal<string | null>(null);
   /** Open conversation key ('' = none). */
   readonly selectedKey = signal<string>('');
+  /** Attachment upload tray for the current compose box. */
+  readonly pendingAttachments = signal<PendingAttachment[]>([]);
+  readonly hasUploading = computed(() => this.pendingAttachments().some(p => p.status === 'uploading'));
 
   readonly currentUser: string = localStorage.getItem('username') || '';
 
@@ -147,7 +151,9 @@ export class ChatStore {
 
   // --- sending -------------------------------------------------------------
   sendMessage(entry: ConversationEntry, text: string, replyingTo: Message | null): void {
-    if (this.isSendingMessage || !text.trim() || !entry) return;
+    const ready = this.pendingAttachments().filter(p => p.status === 'done' && p.attachment);
+    const attachments = ready.map(p => p.attachment!) as Attachment[];
+    if (this.isSendingMessage || (!text.trim() && attachments.length === 0) || !entry) return;
 
     const msg: Message = {
       id: this.newId(),
@@ -159,15 +165,52 @@ export class ChatStore {
       reactions: [],
       replyTo: replyingTo?.id ?? null,
       replyPreview: replyingTo ? replyingTo.message : null,
+      attachments,
     };
-    this.chatHistory.update((h) => ({
-      ...h,
-      [entry.key]: [...(h[entry.key] ?? []), msg],
-    }));
-    entry.last_message = text;
+    this.chatHistory.update(h => ({ ...h, [entry.key]: [...(h[entry.key] ?? []), msg] }));
+    entry.last_message = text || (attachments.length ? '📎 Attachment' : '');
     entry.last_message_at = msg.datetime;
+    const sentIds = new Set(ready.map(p => p.localId));
+    this.pendingAttachments.update(list => list.filter(p => !sentIds.has(p.localId)));
 
     this.postMessage(entry, text, msg);
+  }
+
+  addFiles(files: FileList | File[]): void {
+    Array.from(files).forEach((file) => {
+      const localId = this.newId();
+      this.pendingAttachments.update(p => [...p, { localId, file, status: 'uploading', progress: 0 }]);
+      this.uploadOne(localId, file);
+    });
+  }
+
+  private uploadOne(localId: string, file: File): void {
+    this.chatApi.uploadAttachment(file).subscribe({
+      next: (ev: any) => {
+        if (ev.type === HttpEventType.UploadProgress && ev.total) {
+          this.patchPending(localId, { progress: Math.round((100 * ev.loaded) / ev.total) });
+        } else if (ev.type === HttpEventType.Response) {
+          this.patchPending(localId, { status: 'done', progress: 100, attachment: ev.body });
+        }
+      },
+      error: () => this.patchPending(localId, { status: 'failed' }),
+    });
+  }
+
+  private patchPending(localId: string, patch: Partial<PendingAttachment>): void {
+    this.pendingAttachments.update(list =>
+      list.map(p => (p.localId === localId ? { ...p, ...patch } : p)));
+  }
+
+  removePending(localId: string): void {
+    this.pendingAttachments.update(list => list.filter(p => p.localId !== localId));
+  }
+
+  retryPending(localId: string): void {
+    const p = this.pendingAttachments().find(x => x.localId === localId);
+    if (!p) return;
+    this.patchPending(localId, { status: 'uploading', progress: 0 });
+    this.uploadOne(localId, p.file);
   }
 
   retry(entry: ConversationEntry, msg: Message): void {
@@ -179,6 +222,8 @@ export class ChatStore {
 
   private postMessage(entry: ConversationEntry, text: string, msg: Message): void {
     this.isSendingMessage = true;
+    const attachmentIds = (msg.attachments ?? []).map(a => a.id);
+    const attachmentsMeta = msg.attachments ?? [];
     let req: Observable<any>;
     if (entry.kind === 'group') {
       this.realtime.emitSend({
@@ -186,12 +231,14 @@ export class ChatStore {
         message: text,
         client_message_id: msg.id,
         reply_to: msg.replyTo ?? null,
+        attachments: attachmentsMeta,
       });
       req = this.chatApi.postGroup(
         entry.conversationId as number,
         text,
         msg.id as string,
-        msg.replyTo ?? null
+        msg.replyTo ?? null,
+        attachmentIds
       );
     } else {
       this.realtime.emitSend({
@@ -199,12 +246,14 @@ export class ChatStore {
         message: text,
         client_message_id: msg.id,
         reply_to: msg.replyTo ?? null,
+        attachments: attachmentsMeta,
       });
       req = this.chatApi.postDm(
         entry.username || '',
         text,
         msg.id as string,
-        msg.replyTo ?? null
+        msg.replyTo ?? null,
+        attachmentIds
       );
     }
     req.pipe(finalize(() => (this.isSendingMessage = false))).subscribe({
@@ -481,6 +530,7 @@ export class ChatStore {
       replyPreview: raw.reply_preview ?? null,
       editedAt: raw.edited_at ?? null,
       deleted: !!raw.deleted,
+      attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
     };
   }
 }

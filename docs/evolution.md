@@ -77,6 +77,25 @@ The Calls tab is a placeholder today; **video calling** (WebRTC + Socket.IO sign
 
 ---
 
+## File attachments — delivered
+
+Images and files can now be sent in any DM or group conversation. Images render inline in a grid with a tap-to-open lightbox; other file types appear as chips with filename, size, and a download action. Multiple attachments per message are supported; the per-message limit is **25 MB**.
+
+### How it works
+
+- **Upload-first flow.** The client uploads bytes via `POST /api/attachments` before (or while) composing the message body. The server returns `{ id, filename, mime, size, kind }` immediately. When the user sends, `attachment_ids` travel with the message POST and the matching socket payload, and the backend **links** them to the persisted `Message` row by `client_message_id`. There is no separate polling — the link is atomic with send.
+- **Pending-attachment tray.** Upload progress, per-file retry, and the 📎 button live in `ChatStore` (`addFiles` / `removePending` / `retryPending`), rendered by the shared `<app-attachment-tray>` component. Both the desktop and mobile composers host the same tray.
+- **Serving.** `GET /api/attachments/<id>?token=<jwt>` decodes the JWT from the query string (reusing the Socket.IO `?token=` convention), checks conversation membership, and serves bytes. Images are served `inline`; all other types use `Content-Disposition: attachment` plus `X-Content-Type-Options: nosniff` as an XSS guard. Deleted-message files return 404.
+- **Schema.** The `MessageAttachment` table (`client_message_id`, `conversation_id`, `uploader_user_id`, `storage_key`, `filename`, `mime`, `size`, `kind`, `created_at`) backs every upload. `conversations.serialize_messages` includes an `attachments` array in every message payload, so both REST history and live socket events carry the same data.
+
+### Production evolution
+
+The design isolates all byte I/O behind **`chat/storage.py`** — the rest of the codebase never touches files directly. A real deployment swaps the local-disk implementation for **object storage (S3, MinIO, GCS)** by replacing only that module. The token-in-URL serve pattern evolves naturally into **pre-signed URLs**: instead of proxying bytes through Flask, `storage.py` returns a short-lived signed URL from the object store and the serve route redirects to it — no change required in any other backend or client code. File metadata stays in SQLite throughout.
+
+**Redis** enters the picture separately as the **Socket.IO pub/sub adapter** for multi-server realtime (to replace the in-process `online_users` list). Attachments ride the same `receive_message` / group message socket events unchanged — no attachment-specific realtime changes are needed when adding Redis.
+
+---
+
 ## Video calling (planned — placeholder in UI today)
 
 A disabled **"🎥 Call — coming soon"** control already sits in the conversation header (both DMs and groups) so the seam exists. The intended implementation, as its own future sub-project:

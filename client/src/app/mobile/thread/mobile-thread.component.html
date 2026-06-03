@@ -41,6 +41,7 @@
 </div>
 
 <div class="mt-composer">
+  <app-attachment-tray></app-attachment-tray>
   @if (replyingTo) {
     <div class="mt-replychip">
       <div class="mt-replychip__body">
@@ -51,6 +52,10 @@
     </div>
   }
   <div class="mt-inputrow">
+    <button type="button" class="mt-clip" (click)="fileInput.click()" aria-label="Attach files">
+      <mat-icon>attach_file</mat-icon>
+    </button>
+    <input #fileInput type="file" multiple hidden (change)="onFilesPicked($event)">
     <textarea
       class="mt-input"
       [(ngModel)]="newMessage"
@@ -62,7 +67,7 @@
     <button
       type="button"
       class="mt-send"
-      [disabled]="!newMessage.trim()"
+      [disabled]="!newMessage.trim() && !store.pendingAttachments().length"
       (click)="send()"
       aria-label="Send">
       <mat-icon>send</mat-icon>

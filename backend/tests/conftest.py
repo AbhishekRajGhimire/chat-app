@@ -3,6 +3,7 @@ import tempfile
 
 # Set BEFORE importing the app so the DB path + secret-guard use test values.
 os.environ["CHAT_DB_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
+os.environ["CHAT_UPLOAD_DIR"] = os.path.join(tempfile.mkdtemp(), "uploads")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret")
 os.environ.setdefault("FLASK_DEBUG", "true")
@@ -30,7 +31,7 @@ def client(app):
 def clean_db():
     """Wipe all rows between tests (single shared connection → must isolate)."""
     yield
-    for table in ("MessageReaction", "Message", "ConversationMember", "Conversation", "UserProfile", "User"):
+    for table in ("MessageAttachment", "MessageReaction", "Message", "ConversationMember", "Conversation", "UserProfile", "User"):
         cursor.execute(f"DELETE FROM {table}")
     connection.commit()
 

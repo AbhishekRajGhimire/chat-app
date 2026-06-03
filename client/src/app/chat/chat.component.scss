@@ -525,6 +525,31 @@
 }
 
 // --- Composer --------------------------------------------------------------
+// Scoped under .message-input so it beats `.message-input button { background: gold }`
+// (the send-button rule) — the clip must stay a borderless transparent icon.
+.message-input .composer-clip {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: $rojin-ink-soft;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: background $rojin-dur-fast $rojin-ease, color $rojin-dur-fast $rojin-ease;
+
+  &:hover {
+    background: rgba(176, 141, 87, 0.12);
+    color: $rojin-gold;
+    box-shadow: none;
+  }
+}
+
 .message-input {
   display: flex;
   align-items: flex-end;

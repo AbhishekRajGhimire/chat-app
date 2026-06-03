@@ -107,6 +107,7 @@ If the peer is **offline**, the Socket.IO emit reaches **no sockets** in room `P
 | **Conversation** | Thread (DM or future group) | `id`, `type` (`direct` \| `group`), `title`, `created_at`, `dm_user_low_id` / `dm_user_high_id` for direct pair (normalized, unique) |
 | **ConversationMember** | Membership | `(conversation_id, user_id)` PK, `role`, `joined_at` |
 | **Message** | History | `id`, `conversation_id`, `sender_user_id`, `body`, `created_at`; optional `client_message_id` |
+| **MessageAttachment** | Files linked to a message | `id`, `client_message_id`, `conversation_id`, `uploader_user_id`, `storage_key`, `filename`, `mime`, `size`, `kind` (`image`\|`file`), `created_at`; `serialize_messages` includes an `attachments` array per message payload |
 
 Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message` table (if present) is **dropped on startup** so the file can move to the conversation model without manual SQL (dev-oriented).
 
@@ -122,7 +123,7 @@ Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message`
 | GET | `/api/chats_history` | Yes | Sidebar entries `{ username, display_name }` (you + direct-conversation peers) |
 | GET | `/api/directory_users` | Yes | All registered users except you (New Chat search) |
 | GET | `/api/dm/messages/<other_username>` | Yes | DM transcript with that user |
-| POST | `/api/dm/messages` | Yes | JSON `{ to_username, body }`; sender from JWT |
+| POST | `/api/dm/messages` | Yes | JSON `{ to_username, body }`; sender from JWT; accepts optional `attachment_ids` array |
 | GET/PATCH | `/api/me/profile` | Yes | Current user profile |
 | GET | `/api/users/<username>/profile` | Yes | Another user’s public profile card |
 | POST | `/api/messages/<id>/react` | Yes | Toggle emoji reaction on a message (keyed by `client_message_id`) |
@@ -134,7 +135,9 @@ Schema is created in `backend/chat/database.py`. A **legacy** pairwise `Message`
 | POST | `/api/groups/<id>/members` | Yes | Add member to group |
 | DELETE | `/api/groups/<id>/members/<username>` | Yes | Remove member from group |
 | GET | `/api/groups/<id>/messages` | Yes | Group message history |
-| POST | `/api/groups/<id>/messages` | Yes | Post message to group |
+| POST | `/api/groups/<id>/messages` | Yes | Post message to group; accepts optional `attachment_ids` array |
+| POST | `/api/attachments` | Yes | Multipart upload (≤ 25 MB); returns `{ id, filename, mime, size, kind }` (`kind` = `image` \| `file`) |
+| GET | `/api/attachments/<id>?token=` | No* | Serve attachment bytes; `token` query param decoded manually (mirrors the Socket.IO `?token=` pattern); membership-checked; images served `inline`, other files as `Content-Disposition: attachment` + `X-Content-Type-Options: nosniff`; 404 if the parent message is deleted |
 
 See [`security.md`](./security.md) for LAN configuration (`.env`, CORS allowlist) and remaining hardening ideas.
 
@@ -230,6 +233,8 @@ Components and the store never import `socket.io-client` or `HttpClient` directl
 - Business rules: optimistic message append, roll-back on HTTP error, reaction toggle, thread switching.
 
 Nothing else manages the socket lifecycle. Components call store methods and read signals; they never subscribe to `RealtimeClient` streams directly.
+
+Attachment upload state (pending files, per-file progress, retry) also lives in `ChatStore` (`addFiles` / `removePending` / `retryPending`). File bytes are written and read exclusively through `chat/storage.py` on the backend — swapping local disk for object storage (S3/MinIO) requires changes only to that module.
 
 ### Layer 3 — Presentation (shells)
 

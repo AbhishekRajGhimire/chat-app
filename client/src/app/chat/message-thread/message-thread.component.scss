@@ -515,3 +515,139 @@
     box-shadow: none;
   }
 }
+
+// ── Attachment rendering ────────────────────────────────────────────────────
+
+.msg-attach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+// Image thumbnail
+.msg-attach__img {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;
+
+  img {
+    display: block;
+    max-width: 240px;
+    max-height: 240px;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+}
+
+// 2-up layout when there are 2+ images
+.msg-attach:has(> :nth-child(2)) .msg-attach__img img {
+  max-width: 150px;
+}
+
+// File chip
+.msg-attach__file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  min-width: 210px;
+  max-width: 280px;
+  text-decoration: none;
+  border-radius: 10px;
+  background: rgba(176, 141, 87, 0.12);
+  border: 1px solid $rojin-line;
+}
+
+.msg-attach__ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(176, 141, 87, 0.14);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.msg-attach__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.msg-attach__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $rojin-ink;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msg-attach__size {
+  font-size: 11px;
+  color: $rojin-ink-soft;
+}
+
+.msg-attach__dl {
+  font-size: 18px;
+  color: $rojin-gold;
+  flex-shrink: 0;
+}
+
+// Sent-bubble variants (legible on plum)
+.message-bubble--sent {
+  .msg-attach__file {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .msg-attach__name {
+    color: $rojin-canvas;
+  }
+
+  .msg-attach__size,
+  .msg-attach__dl {
+    color: rgba(247, 242, 232, 0.75);
+  }
+}
+
+// ── Lightbox overlay ─────────────────────────────────────────────────────────
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(20, 8, 20, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    max-width: 92vw;
+    max-height: 88vh;
+    border-radius: 6px;
+  }
+
+  &__x {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+  }
+}

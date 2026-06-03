@@ -8,10 +8,12 @@ from chat import app, socketio
 from .chatfunc import add_user_to_live_room
 from .conversations import (
     add_group_member,
+    attachments_for,
     conversation_room,
     create_group_conversation,
     group_members,
     is_member,
+    link_attachments,
     mark_read,
     read_state,
     remove_group_member,
@@ -188,9 +190,13 @@ def post_group_message(cid):
         return err
     data = request.get_json(silent=True) or {}
     body = data.get("body")
-    if not isinstance(body, str) or not body.strip():
-        return jsonify({"error": "body required"}), 400
-    body = body.strip()
+    attachment_ids = data.get("attachment_ids") or []
+    if not isinstance(attachment_ids, list):
+        attachment_ids = []
+    has_body = isinstance(body, str) and body.strip()
+    if not has_body and not attachment_ids:
+        return jsonify({"error": "body or attachment required"}), 400
+    body = body.strip() if isinstance(body, str) else ""
     now = _utc_now_iso()
     cmid = data.get("client_message_id")
     cmid = cmid.strip() if isinstance(cmid, str) and cmid.strip() else None
@@ -203,6 +209,7 @@ def post_group_message(cid):
         (cid, uid, body, now, cmid, reply_to),
     )
     connection.commit()
+    link_attachments(cmid, cid, attachment_ids, uid)
     # Persistence only; live delivery is the socket send_message path
     # (emits to the conversation room, excluding the sender).
     cursor.execute("SELECT title FROM Conversation WHERE id=?", (cid,))
@@ -220,4 +227,5 @@ def post_group_message(cid):
                     "kind": "group",
                     "url": "/",
                 })
-    return jsonify({"message": "ok", "datetime": now, "client_message_id": cmid}), 201
+    return jsonify({"message": "ok", "datetime": now, "client_message_id": cmid,
+                    "attachments": attachments_for(cmid)}), 201

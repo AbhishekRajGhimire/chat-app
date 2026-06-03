@@ -269,6 +269,36 @@
   }
 }
 
+// Attach (paperclip) button
+.mt-clip {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: $rojin-ink-soft;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: background $rojin-dur-fast $rojin-ease, color $rojin-dur-fast $rojin-ease;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  &:hover {
+    background: rgba(176, 141, 87, 0.12);
+    color: $rojin-gold;
+  }
+
+  &:active {
+    background: rgba(176, 141, 87, 0.18);
+  }
+}
+
 // Input row: textarea + send button
 .mt-inputrow {
   display: flex;

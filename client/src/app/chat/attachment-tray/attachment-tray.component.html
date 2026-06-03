@@ -1,0 +1,16 @@
+@if (store.pendingAttachments().length) {
+  <div class="tray">
+    @for (p of store.pendingAttachments(); track p.localId) {
+      <div class="tray__item" [class.tray__item--failed]="p.status === 'failed'">
+        @if (isImage(p)) {
+          <img class="tray__thumb" [src]="thumb(p)" alt="">
+        } @else {
+          <span class="tray__file"><span class="tray__fic">📄</span><span class="tray__fname">{{ p.file.name }}</span></span>
+        }
+        @if (p.status === 'uploading') { <span class="tray__bar"><i [style.width.%]="p.progress"></i></span> }
+        @if (p.status === 'failed') { <button type="button" class="tray__retry" (click)="store.retryPending(p.localId)">Retry</button> }
+        <button type="button" class="tray__x" (click)="remove(p)" aria-label="Remove">✕</button>
+      </div>
+    }
+  </div>
+}
