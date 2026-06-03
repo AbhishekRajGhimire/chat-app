@@ -3,7 +3,11 @@
     <mat-icon>arrow_back</mat-icon>
   </button>
   @if (isGroup) {
-    <span class="mt-mono">{{ monogram(title) }}</span>
+    @if (entry.avatarUrl) {
+      <app-avatar [name]="title" [seed]="entry.key" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
+    } @else {
+      <span class="mt-mono">{{ monogram(title) }}</span>
+    }
   } @else {
     <app-avatar [name]="title" [seed]="peerUsername" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
   }

@@ -10,7 +10,11 @@
     @if (!(entry.kind === 'direct' && entry.username === store.currentUser)) {
       <button type="button" class="m-row" (click)="open(entry)">
         @if (entry.kind === 'group') {
-          <span class="m-row__mono">{{ monogram(entry.displayName) }}</span>
+          @if (entry.avatarUrl) {
+            <app-avatar [name]="entry.displayName" [seed]="entry.key" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="46"></app-avatar>
+          } @else {
+            <span class="m-row__mono">{{ monogram(entry.displayName) }}</span>
+          }
         } @else {
           <span class="m-row__av">
             <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="46"></app-avatar>
