@@ -2,10 +2,11 @@
 import datetime
 from typing import Any, Dict, Optional, Tuple
 
-from flask import jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask import jsonify, request, send_file
+from flask_jwt_extended import decode_token, get_jwt_identity, jwt_required
 
 from chat import app
+from . import storage
 from .database import connection, cursor
 
 
@@ -36,19 +37,13 @@ def _ensure_profile_row(user_id: int, username: str) -> None:
 
 def _row_to_public(username: str, prof_row: Optional[Tuple]) -> Dict[str, Any]:
     if not prof_row:
-        return {
-            "username": username,
-            "display_name": username,
-            "avatar_url": None,
-            "bio": None,
-            "updated_at": None,
-        }
-    dn, au, bio, up = prof_row
-    display = (dn or "").strip() or username
+        return {"username": username, "display_name": username,
+                "avatar_url": None, "bio": None, "updated_at": None}
+    dn, _legacy_url, bio, up, avatar_key = prof_row
     return {
         "username": username,
-        "display_name": display,
-        "avatar_url": au,
+        "display_name": (dn or "").strip() or username,
+        "avatar_url": _avatar_path(username, avatar_key),
         "bio": bio,
         "updated_at": up,
     }
@@ -65,7 +60,7 @@ def get_my_profile():
     user_id, username = row[0], row[1]
     cursor.execute(
         """
-        SELECT display_name, avatar_url, bio, updated_at
+        SELECT display_name, avatar_url, bio, updated_at, avatar_key
         FROM UserProfile WHERE user_id=?
         """,
         (user_id,),
@@ -118,12 +113,88 @@ def patch_my_profile():
 
     cursor.execute(
         """
-        SELECT display_name, avatar_url, bio, updated_at
+        SELECT display_name, avatar_url, bio, updated_at, avatar_key
         FROM UserProfile WHERE user_id=?
         """,
         (user_id,),
     )
     return jsonify(_row_to_public(username, cursor.fetchone()))
+
+
+def _avatar_key_for(user_id):
+    cursor.execute("SELECT avatar_key, avatar_mime FROM UserProfile WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+    return (row[0], row[1]) if row else (None, None)
+
+
+@app.route("/api/me/avatar", methods=["POST"])
+@jwt_required()
+def upload_my_avatar():
+    me = get_jwt_identity()
+    cursor.execute("SELECT id, username FROM User WHERE username=?", (me,))
+    row = cursor.fetchone()
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+    user_id, username = row[0], row[1]
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"error": "file required"}), 400
+    mime = f.mimetype or ""
+    if not mime.startswith("image/"):
+        return jsonify({"error": "image required"}), 400
+    _ensure_profile_row(user_id, username)
+    old_key, _old_mime = _avatar_key_for(user_id)
+    key, _size = storage.save(f)
+    cursor.execute(
+        "UPDATE UserProfile SET avatar_key=?, avatar_mime=?, updated_at=? WHERE user_id=?",
+        (key, mime, _utc_now_iso(), user_id),
+    )
+    connection.commit()
+    if old_key:
+        storage.delete(old_key)
+    cursor.execute("SELECT display_name, avatar_url, bio, updated_at, avatar_key FROM UserProfile WHERE user_id=?", (user_id,))
+    return jsonify(_row_to_public(username, cursor.fetchone()))
+
+
+@app.route("/api/me/avatar", methods=["DELETE"])
+@jwt_required()
+def delete_my_avatar():
+    me = get_jwt_identity()
+    cursor.execute("SELECT id, username FROM User WHERE username=?", (me,))
+    row = cursor.fetchone()
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+    user_id, username = row[0], row[1]
+    old_key, _ = _avatar_key_for(user_id)
+    cursor.execute("UPDATE UserProfile SET avatar_key=NULL, avatar_mime=NULL, updated_at=? WHERE user_id=?",
+                   (_utc_now_iso(), user_id))
+    connection.commit()
+    if old_key:
+        storage.delete(old_key)
+    cursor.execute("SELECT display_name, avatar_url, bio, updated_at, avatar_key FROM UserProfile WHERE user_id=?", (user_id,))
+    return jsonify(_row_to_public(username, cursor.fetchone()))
+
+
+@app.route("/api/avatars/<username>", methods=["GET"])
+def serve_avatar(username):
+    token = request.args.get("token", "")
+    try:
+        ok = bool(decode_token(token).get("sub"))
+    except Exception:
+        ok = False
+    if not ok:
+        return jsonify({"error": "auth required"}), 401
+    cursor.execute(
+        "SELECT p.avatar_key, p.avatar_mime FROM User u "
+        "JOIN UserProfile p ON p.user_id = u.id WHERE u.username=?",
+        (username,),
+    )
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return jsonify({"error": "not found"}), 404
+    resp = send_file(storage.open_path(row[0]), mimetype=row[1] or "image/jpeg", as_attachment=False)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
 
 
 @app.route("/api/users/<target_username>/profile", methods=["GET"])
@@ -137,7 +208,7 @@ def get_user_public_profile(target_username):
     user_id, username = row[0], row[1]
     cursor.execute(
         """
-        SELECT display_name, avatar_url, bio, updated_at
+        SELECT display_name, avatar_url, bio, updated_at, avatar_key
         FROM UserProfile WHERE user_id=?
         """,
         (user_id,),

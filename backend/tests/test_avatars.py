@@ -1,3 +1,5 @@
+import io as _io
+
 from chat.database import cursor
 from chat.profile import _avatar_path
 
@@ -13,3 +15,38 @@ def test_avatar_path_builds_versioned_path_or_none():
     assert _avatar_path("alice", "") is None
     p = _avatar_path("alice", "abcdef1234567890.jpg")
     assert p == "/api/avatars/alice?v=abcdef12"
+
+
+def test_upload_avatar_sets_path_then_delete_clears(client, make_user):
+    alice = make_user("alice")
+    r = client.post("/api/me/avatar",
+                    data={"file": (_io.BytesIO(b"JPEGDATA"), "a.jpg", "image/jpeg")},
+                    content_type="multipart/form-data", headers=alice["headers"])
+    assert r.status_code == 200
+    url = r.get_json()["avatar_url"]
+    assert url and url.startswith("/api/avatars/alice?v=")
+    prof = client.get("/api/me/profile", headers=alice["headers"]).get_json()
+    assert prof["avatar_url"] == url
+    d = client.delete("/api/me/avatar", headers=alice["headers"])
+    assert d.status_code == 200 and d.get_json()["avatar_url"] is None
+
+
+def test_upload_avatar_rejects_non_image(client, make_user):
+    alice = make_user("alice")
+    r = client.post("/api/me/avatar",
+                    data={"file": (_io.BytesIO(b"%PDF"), "a.pdf", "application/pdf")},
+                    content_type="multipart/form-data", headers=alice["headers"])
+    assert r.status_code == 400
+
+
+def test_serve_avatar_token_gated(client, make_user):
+    alice = make_user("alice"); bob = make_user("bob")
+    client.post("/api/me/avatar",
+                data={"file": (_io.BytesIO(b"IMG"), "a.jpg", "image/jpeg")},
+                content_type="multipart/form-data", headers=alice["headers"])
+    btok = bob["headers"]["Authorization"].split()[1]
+    ok = client.get(f"/api/avatars/alice?token={btok}")
+    assert ok.status_code == 200 and ok.data == b"IMG"
+    assert "inline" in ok.headers.get("Content-Disposition", "")
+    assert client.get("/api/avatars/alice").status_code == 401
+    assert client.get(f"/api/avatars/bob?token={btok}").status_code == 404
