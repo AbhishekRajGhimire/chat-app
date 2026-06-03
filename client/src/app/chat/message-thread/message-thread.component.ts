@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Message } from '../../core/models/message.model';
+import { ChatApi } from '../../core/chat-api.service';
 
 // Mirrors the avatar palette so a sender's name color matches their avatar.
 const SENDER_COLORS = [
@@ -21,6 +22,8 @@ const SENDER_COLORS = [
   standalone: false,
 })
 export class MessageThreadComponent {
+  constructor(public api: ChatApi) {}
+
   @Input() thread: Message[] = [];
   /** The open conversation's read map: username → last_read_at ISO. */
   @Input() readState: Record<string, string | null> = {};
@@ -43,6 +46,17 @@ export class MessageThreadComponent {
   /** Message currently being edited inline (null = none) + its draft text. */
   editingId: string | null = null;
   editText = '';
+
+  // --- lightbox ----------------------------------------------------------------
+  lightboxUrl: string | null = null;
+  openLightbox(url: string) { this.lightboxUrl = url; }
+  closeLightbox() { this.lightboxUrl = null; }
+  prettySize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+  fileIcon(_mime: string): string { return '📄'; }
 
   readonly quickReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
   readonly emojiPicker = [
