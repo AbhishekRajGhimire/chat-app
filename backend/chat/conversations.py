@@ -27,9 +27,11 @@ def is_member(cid: int, user_id: int) -> bool:
 
 
 def group_members(cid: int) -> List[dict]:
+    from .profile import _avatar_path
     cursor.execute(
         """
-        SELECT u.username, COALESCE(NULLIF(TRIM(p.display_name), ''), u.username)
+        SELECT u.username, COALESCE(NULLIF(TRIM(p.display_name), ''), u.username),
+               p.avatar_key
         FROM ConversationMember m
         JOIN User u ON u.id = m.user_id
         LEFT JOIN UserProfile p ON p.user_id = u.id
@@ -38,7 +40,8 @@ def group_members(cid: int) -> List[dict]:
         """,
         (cid,),
     )
-    return [{"username": r[0], "display_name": r[1]} for r in cursor.fetchall()]
+    return [{"username": r[0], "display_name": r[1],
+             "avatar_url": _avatar_path(r[0], r[2])} for r in cursor.fetchall()]
 
 
 def create_group_conversation(creator_id: int, title: str, member_ids: List[int]) -> int:
@@ -168,12 +171,14 @@ def link_attachments(client_message_id: str, conversation_id: int,
 def serialize_messages(cid: int, me_id: int) -> list:
     """Full message payloads for a conversation: text + id + reactions + reply +
     edited/deleted markers. Shared by DM and group history endpoints."""
+    from .profile import _avatar_path
     cursor.execute(
         """
         SELECT u.username, m.body, m.created_at, m.client_message_id,
-               m.reply_to, m.edited_at, m.deleted_at
+               m.reply_to, m.edited_at, m.deleted_at, p.avatar_key
         FROM Message m
         JOIN User u ON u.id = m.sender_user_id
+        LEFT JOIN UserProfile p ON p.user_id = m.sender_user_id
         WHERE m.conversation_id = ?
         ORDER BY m.created_at, m.id
         """,
@@ -183,7 +188,7 @@ def serialize_messages(cid: int, me_id: int) -> list:
     body_by_cmid = {r[3]: r[1] for r in rows if r[3]}
     deleted_cmids = {r[3] for r in rows if r[3] and r[6] is not None}
     out = []
-    for username, body, ts, cmid, reply_to, edited_at, deleted_at in rows:
+    for username, body, ts, cmid, reply_to, edited_at, deleted_at, avatar_key in rows:
         deleted = deleted_at is not None
         preview = None
         if reply_to and reply_to not in deleted_cmids:
@@ -202,6 +207,7 @@ def serialize_messages(cid: int, me_id: int) -> list:
                 "deleted": deleted,
                 "reactions": reactions_for(cmid, me_id) if cmid else [],
                 "attachments": attachments_for(cmid) if cmid else [],
+                "sender_avatar_url": _avatar_path(username, avatar_key),
             }
         )
     return out

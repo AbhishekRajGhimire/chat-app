@@ -50,3 +50,33 @@ def test_serve_avatar_token_gated(client, make_user):
     assert "inline" in ok.headers.get("Content-Disposition", "")
     assert client.get("/api/avatars/alice").status_code == 401
     assert client.get(f"/api/avatars/bob?token={btok}").status_code == 404
+
+
+def _set_avatar(client, user):
+    client.post("/api/me/avatar",
+                data={"file": (_io.BytesIO(b"IMG"), "a.jpg", "image/jpeg")},
+                content_type="multipart/form-data", headers=user["headers"])
+
+
+def test_directory_and_history_include_avatar(client, make_user):
+    alice = make_user("alice"); bob = make_user("bob")
+    _set_avatar(client, bob)
+    diru = client.get("/api/directory_users", headers=alice["headers"]).get_json()
+    assert any(u["username"] == "bob" and u["avatar_url"] for u in diru)
+    client.post("/api/dm/messages", json={"to_username": "bob", "body": "hi"}, headers=alice["headers"])
+    hist = client.get("/api/chats_history", headers=alice["headers"]).get_json()
+    bob_row = next(e for e in hist if e.get("username") == "bob")
+    assert bob_row["avatar_url"]
+
+
+def test_group_members_and_sender_avatar(client, make_user):
+    alice = make_user("alice"); bob = make_user("bob")
+    _set_avatar(client, alice)
+    cid = client.post("/api/groups", json={"title": "G", "members": ["bob"]},
+                      headers=alice["headers"]).get_json()["conversation_id"]
+    g = client.get(f"/api/groups/{cid}", headers=alice["headers"]).get_json()
+    assert any(m["username"] == "alice" and m["avatar_url"] for m in g["members"])
+    client.post(f"/api/groups/{cid}/messages", json={"body": "yo", "client_message_id": "gm"},
+                headers=alice["headers"])
+    msgs = client.get(f"/api/groups/{cid}/messages", headers=bob["headers"]).get_json()["messages"]
+    assert next(m for m in msgs if m["id"] == "gm")["sender_avatar_url"]
