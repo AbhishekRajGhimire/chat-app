@@ -16,5 +16,6 @@ export interface Message {
   editedAt?: string | null;
   deleted?: boolean;
   attachments?: Attachment[];
+  senderAvatarUrl?: string | null;
 }
 export interface ReadRow { username: string; last_read_at: string | null; }

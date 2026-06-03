@@ -531,6 +531,7 @@ export class ChatStore {
       editedAt: raw.edited_at ?? null,
       deleted: !!raw.deleted,
       attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
+      senderAvatarUrl: raw.sender_avatar_url ?? null,
     };
   }
 }
