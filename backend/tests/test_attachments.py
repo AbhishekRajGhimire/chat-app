@@ -23,6 +23,88 @@ def test_message_attachment_table_exists():
             "filename", "mime", "size", "kind", "created_at"} <= cols
 
 
+import io as _io
+
+
+def test_upload_returns_metadata_and_kind(client, make_user):
+    alice = make_user("alice")
+    r = client.post("/api/attachments",
+                    data={"file": (_io.BytesIO(b"\x89PNG..."), "pic.png", "image/png")},
+                    content_type="multipart/form-data", headers=alice["headers"])
+    assert r.status_code == 201
+    body = r.get_json()
+    assert body["filename"] == "pic.png" and body["mime"] == "image/png"
+    assert body["kind"] == "image" and body["size"] > 0 and isinstance(body["id"], int)
+
+
+def test_upload_non_image_is_file_kind(client, make_user):
+    alice = make_user("alice")
+    r = client.post("/api/attachments",
+                    data={"file": (_io.BytesIO(b"%PDF-1.5"), "doc.pdf", "application/pdf")},
+                    content_type="multipart/form-data", headers=alice["headers"])
+    assert r.get_json()["kind"] == "file"
+
+
+def test_group_send_links_attachment_and_serializes(client, make_user):
+    alice = make_user("alice"); bob = make_user("bob")
+    cid = client.post("/api/groups", json={"title": "G", "members": ["bob"]},
+                      headers=alice["headers"]).get_json()["conversation_id"]
+    up = client.post("/api/attachments",
+                     data={"file": (_io.BytesIO(b"img"), "p.png", "image/png")},
+                     content_type="multipart/form-data", headers=alice["headers"]).get_json()
+    r = client.post(f"/api/groups/{cid}/messages",
+                    json={"body": "", "client_message_id": "g-att", "attachment_ids": [up["id"]]},
+                    headers=alice["headers"])
+    assert r.status_code == 201
+    msgs = client.get(f"/api/groups/{cid}/messages", headers=bob["headers"]).get_json()["messages"]
+    m = next(x for x in msgs if x["id"] == "g-att")
+    assert [a["id"] for a in m["attachments"]] == [up["id"]]
+
+
+def test_dm_send_allows_empty_body_with_attachment(client, make_user):
+    alice = make_user("alice"); make_user("bob")
+    up = client.post("/api/attachments",
+                     data={"file": (_io.BytesIO(b"img"), "p.png", "image/png")},
+                     content_type="multipart/form-data", headers=alice["headers"]).get_json()
+    r = client.post("/api/dm/messages",
+                    json={"to_username": "bob", "body": "", "client_message_id": "d-att",
+                          "attachment_ids": [up["id"]]}, headers=alice["headers"])
+    assert r.status_code == 201
+    msgs = client.get("/api/dm/messages/bob", headers=alice["headers"]).get_json()["messages"]
+    assert any(x["id"] == "d-att" and len(x["attachments"]) == 1 for x in msgs)
+
+
+def test_serve_member_gets_bytes_and_disposition(client, make_user):
+    alice = make_user("alice"); bob = make_user("bob")
+    cid = client.post("/api/groups", json={"title": "G", "members": ["bob"]},
+                      headers=alice["headers"]).get_json()["conversation_id"]
+    up = client.post("/api/attachments",
+                     data={"file": (_io.BytesIO(b"PNGDATA"), "p.png", "image/png")},
+                     content_type="multipart/form-data", headers=alice["headers"]).get_json()
+    client.post(f"/api/groups/{cid}/messages",
+                json={"body": "", "client_message_id": "att-msg", "attachment_ids": [up["id"]]},
+                headers=alice["headers"])
+    token = bob["headers"]["Authorization"].split()[1]
+    r = client.get(f"/api/attachments/{up['id']}?token={token}")
+    assert r.status_code == 200 and r.data == b"PNGDATA"
+    assert "inline" in r.headers.get("Content-Disposition", "")
+
+
+def test_serve_non_member_forbidden(client, make_user):
+    alice = make_user("alice"); make_user("bob"); carol = make_user("carol")
+    cid = client.post("/api/groups", json={"title": "G", "members": ["bob"]},
+                      headers=alice["headers"]).get_json()["conversation_id"]
+    up = client.post("/api/attachments",
+                     data={"file": (_io.BytesIO(b"x"), "d.pdf", "application/pdf")},
+                     content_type="multipart/form-data", headers=alice["headers"]).get_json()
+    client.post(f"/api/groups/{cid}/messages",
+                json={"body": "", "client_message_id": "att-2", "attachment_ids": [up["id"]]},
+                headers=alice["headers"])
+    token = carol["headers"]["Authorization"].split()[1]
+    r = client.get(f"/api/attachments/{up['id']}?token={token}")
+    assert r.status_code == 403
+
+
 from chat.conversations import attachments_for, link_attachments, serialize_messages
 from chat.database import connection
 

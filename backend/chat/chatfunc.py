@@ -6,10 +6,12 @@ from flask_jwt_extended import decode_token, get_jwt_identity, jwt_required
 from flask_socketio import emit, join_room
 
 from .conversations import (
+    attachments_for,
     conversation_room,
     get_or_create_direct_conversation,
     group_members,
     is_member,
+    link_attachments,
     mark_read,
     read_state,
     serialize_messages,
@@ -73,12 +75,15 @@ def post_dm_message():
         return jsonify({"error": "Invalid JSON body"}), 400
     to_username = data.get("to_username")
     body = data.get("body")
+    attachment_ids = data.get("attachment_ids") or []
+    if not isinstance(attachment_ids, list):
+        attachment_ids = []
     if not isinstance(to_username, str) or not to_username.strip():
         return jsonify({"error": "to_username required"}), 400
-    if not isinstance(body, str) or not body.strip():
-        return jsonify({"error": "body required"}), 400
+    if (not isinstance(body, str) or not body.strip()) and not attachment_ids:
+        return jsonify({"error": "body or attachment required"}), 400
     to_username = to_username.strip()
-    body = body.strip()
+    body = body.strip() if isinstance(body, str) else ""
     if to_username == me_username:
         return jsonify({"error": "Cannot message yourself"}), 400
 
@@ -104,6 +109,7 @@ def post_dm_message():
         (cid, me_row[0], body, now, cmid, reply_to),
     )
     connection.commit()
+    link_attachments(cmid, cid, attachment_ids, int(me_row[0]))
     # NOTE: live delivery happens via the socket `send_message` handler (DM →
     # peer's username room). This POST only persists. Keeping DM delivery on the
     # username room (unchanged) avoids the "recipient not yet in a brand-new
@@ -122,6 +128,7 @@ def post_dm_message():
                 "conversation_id": cid,
                 "message_id": cursor.lastrowid,
                 "client_message_id": cmid,
+                "attachments": attachments_for(cmid),
             }
         ),
         201,
@@ -386,6 +393,7 @@ def handle_message(data):
         "reactions": [],
         "edited_at": None,
         "deleted": False,
+        "attachments": data.get("attachments") or [],
     }
 
     # Group: deliver to the conversation room (members joined on connect).
