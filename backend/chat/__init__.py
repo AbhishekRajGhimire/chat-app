@@ -62,6 +62,7 @@ else:
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=max(1, days))
 
 app.config["CORS_SUPPORTS_CREDENTIALS"] = True
+app.config["MAX_CONTENT_LENGTH"] = 26 * 1024 * 1024
 
 _cors = os.environ.get("CORS_ORIGINS", "").strip()
 if _cors:
@@ -87,5 +88,6 @@ from chat import chatfunc
 from chat import profile
 from chat import groups
 from chat import messages
+from chat import attachments
 from chat import push
 from chat import database
