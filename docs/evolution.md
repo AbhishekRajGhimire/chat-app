@@ -105,7 +105,17 @@ Avatars are rendered everywhere a person appears: the sidebar, conversation head
 ### Intentional scope limits (deferred)
 
 - **No live avatar push.** Other members see a new photo on their next data load (sidebar refresh, thread open, etc.) — no real-time broadcast event was added.
-- **No group avatars.** Group conversations keep the existing monogram placeholder; only user profiles have uploaded photos.
+
+---
+
+## Group avatars — delivered
+
+Group conversations can now have an uploaded photo, with a monogram fallback when none is set. The feature reuses the existing avatar machinery end-to-end:
+
+- **Schema**: `Conversation.avatar_key` + `avatar_mime` (via `chat/storage.py`); computed cache-busted `avatar_url` rides on `_group_summary` and `chats_history` group rows.
+- **Endpoints**: `POST` / `DELETE /api/groups/<id>/avatar` (multipart, image-only, member-only); `GET /api/groups/<id>/avatar?token=<jwt>` — **members-only** (`is_member` check), not org-public; 403 non-member, 404 no photo, 401 bad token.
+- **Upload UX**: any group member can set or remove the photo. Desktop: via the member panel. Mobile: tap the group avatar in the conversation header.
+- **Render**: all four monogram render sites (desktop sidebar + conversation header, mobile Chats list + thread header) now show the photo through `AvatarComponent` / `avatarSrc()`, falling back to the initial-letter monogram when no photo is set.
 
 ---
 
