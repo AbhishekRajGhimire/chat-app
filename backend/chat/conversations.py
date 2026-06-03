@@ -139,6 +139,32 @@ def reactions_for(client_message_id: str, me_id: int) -> list:
     ]
 
 
+def attachments_for(client_message_id: str) -> list:
+    if not client_message_id:
+        return []
+    cursor.execute(
+        "SELECT id, filename, mime, size, kind FROM MessageAttachment "
+        "WHERE client_message_id = ? ORDER BY id",
+        (client_message_id,),
+    )
+    return [
+        {"id": r[0], "filename": r[1], "mime": r[2], "size": int(r[3]), "kind": r[4]}
+        for r in cursor.fetchall()
+    ]
+
+
+def link_attachments(client_message_id: str, conversation_id: int,
+                     attachment_ids: list, uploader_id: int) -> None:
+    """Attach the caller's own, still-unlinked uploads to a message."""
+    for aid in attachment_ids or []:
+        cursor.execute(
+            "UPDATE MessageAttachment SET client_message_id = ?, conversation_id = ? "
+            "WHERE id = ? AND uploader_user_id = ? AND client_message_id IS NULL",
+            (client_message_id, conversation_id, aid, uploader_id),
+        )
+    connection.commit()
+
+
 def serialize_messages(cid: int, me_id: int) -> list:
     """Full message payloads for a conversation: text + id + reactions + reply +
     edited/deleted markers. Shared by DM and group history endpoints."""
@@ -175,6 +201,7 @@ def serialize_messages(cid: int, me_id: int) -> list:
                 "edited_at": edited_at,
                 "deleted": deleted,
                 "reactions": reactions_for(cmid, me_id) if cmid else [],
+                "attachments": attachments_for(cmid) if cmid else [],
             }
         )
     return out
