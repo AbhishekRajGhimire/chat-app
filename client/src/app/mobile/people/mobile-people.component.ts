@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { ChatStore } from '../../core/chat-store.service';
 import { ChatApi } from '../../core/chat-api.service';
 import { DirectoryUser } from '../../core/models/conversation.model';
+import { avatarSrc } from '../../core/avatar-url';
 
 @Component({
   selector: 'app-mobile-people',
@@ -11,6 +12,8 @@ import { DirectoryUser } from '../../core/models/conversation.model';
   standalone: false,
 })
 export class MobilePeopleComponent implements OnInit {
+  readonly avatarSrc = avatarSrc;
+
   all: DirectoryUser[] = [];
   filtered: DirectoryUser[] = [];
   search = '';

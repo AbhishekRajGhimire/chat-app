@@ -4,6 +4,7 @@ import { Location } from '@angular/common';
 import { ChatStore } from '../../core/chat-store.service';
 import { ConversationEntry } from '../../core/models/conversation.model';
 import { Message } from '../../core/models/message.model';
+import { avatarSrc } from '../../core/avatar-url';
 
 @Component({
   selector: 'app-mobile-thread',
@@ -13,6 +14,7 @@ import { Message } from '../../core/models/message.model';
 })
 export class MobileThreadComponent implements OnInit {
   @ViewChild('scrollHost') private scrollHost?: ElementRef<HTMLElement>;
+  readonly avatarSrc = avatarSrc;
   key = '';
   newMessage = '';
   replyingTo: Message | null = null;

@@ -28,7 +28,7 @@
             @if (entry.kind === 'group') {
               <span class="group-mono">{{ monogram(entry.displayName) }}</span>
             } @else {
-              <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [size]="34"></app-avatar>
+              <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
             }
             <span class="dm-row__body">
               <span class="dm-row__name">{{ entry.displayName }}@if (entry.kind === 'direct' && entry.username === currentUser) {<span class="dm-row__you"> (You)</span>}</span>
@@ -86,6 +86,7 @@
             }
             @for (entry of filteredUsers; track entry) {
               <mat-list-item (click)="selectDirect(entry.username)">
+                <app-avatar [name]="entry.display_name" [seed]="entry.username" [imageUrl]="avatarSrc(entry.avatar_url)" [size]="32"></app-avatar>
                 <span class="search-result-name">{{ entry.display_name }}</span>
                 @if (entry.display_name !== entry.username) {
                   <span class="search-result-username">&#64;{{ entry.username }}</span>
@@ -106,7 +107,7 @@
           @if (isGroupOpen) {
             <span class="chat-header__mono">{{ monogram(headerTitle) }}</span>
           } @else {
-            <app-avatar class="chat-header__avatar" [name]="headerTitle" [seed]="selectedUser" [size]="34"></app-avatar>
+            <app-avatar class="chat-header__avatar" [name]="headerTitle" [seed]="selectedUser" [imageUrl]="avatarSrc(selectedEntry?.avatarUrl)" [size]="34"></app-avatar>
           }
           <span class="chat-header__main">
             <h2 class="chat-header__title">{{ headerTitle }}</h2>
@@ -133,7 +134,7 @@
             <div class="member-panel__list">
               @for (m of groupMembers; track m.username) {
                 <div class="member-row">
-                  <app-avatar [name]="m.display_name" [seed]="m.username" [size]="26"></app-avatar>
+                  <app-avatar [name]="m.display_name" [seed]="m.username" [imageUrl]="avatarSrc(m.avatar_url)" [size]="26"></app-avatar>
                   <span class="member-row__name">{{ m.display_name }}@if (m.username === currentUser) { (You)}</span>
                   @if (m.username !== currentUser) {
                     <button type="button" class="member-row__x" (click)="removeGroupMember(m.username)" aria-label="Remove">✕</button>

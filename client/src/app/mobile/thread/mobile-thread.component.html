@@ -5,7 +5,7 @@
   @if (isGroup) {
     <span class="mt-mono">{{ monogram(title) }}</span>
   } @else {
-    <app-avatar [name]="title" [seed]="peerUsername" [size]="34"></app-avatar>
+    <app-avatar [name]="title" [seed]="peerUsername" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
   }
   <span class="mt-id">
     <span class="mt-name">{{ title }}</span>

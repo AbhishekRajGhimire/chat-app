@@ -13,7 +13,7 @@
           <span class="m-row__mono">{{ monogram(entry.displayName) }}</span>
         } @else {
           <span class="m-row__av">
-            <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [size]="46"></app-avatar>
+            <app-avatar [name]="entry.displayName" [seed]="entry.username || ''" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="46"></app-avatar>
             @if (store.isOnline(entry.username || '')) { <span class="m-row__dot"></span> }
           </span>
         }

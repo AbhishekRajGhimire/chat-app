@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Message } from '../../core/models/message.model';
 import { ChatApi } from '../../core/chat-api.service';
+import { avatarSrc } from '../../core/avatar-url';
 
 // Mirrors the avatar palette so a sender's name color matches their avatar.
 const SENDER_COLORS = [
@@ -23,6 +24,7 @@ const SENDER_COLORS = [
 })
 export class MessageThreadComponent {
   constructor(public api: ChatApi) {}
+  readonly avatarSrc = avatarSrc;
 
   @Input() thread: Message[] = [];
   /** The open conversation's read map: username → last_read_at ISO. */
