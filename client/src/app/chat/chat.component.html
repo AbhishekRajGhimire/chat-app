@@ -183,6 +183,7 @@
             </div>
           }
         </div>
+        <app-attachment-tray></app-attachment-tray>
         <div class="message-input" [class.message-input--replying]="!!replyingTo">
           @if (replyingTo) {
             <div class="reply-chip">
@@ -193,6 +194,10 @@
               <button type="button" class="reply-chip__x" (click)="cancelReply()" aria-label="Cancel reply">✕</button>
             </div>
           }
+          <button type="button" class="composer-clip" (click)="fileInput.click()" aria-label="Attach files">
+            <mat-icon>attach_file</mat-icon>
+          </button>
+          <input #fileInput type="file" multiple hidden (change)="onFilesPicked($event)">
           <textarea
             matInput
             class="message-input__field"
@@ -206,7 +211,7 @@
             mat-raised-button
             color="primary"
             type="button"
-            [disabled]="!newMessage.trim()"
+            [disabled]="!newMessage.trim() && !store.pendingAttachments().length"
             (click)="sendMessage()">
             Send
           </button>

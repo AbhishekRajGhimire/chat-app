@@ -398,6 +398,12 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.replyingTo = null;
   }
 
+  onFilesPicked(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    if (input.files?.length) this.store.addFiles(input.files);
+    input.value = '';
+  }
+
   /** Retry handler bridged from `<app-message-thread>`. */
   onThreadRetry(msg: Message): void {
     const e = this.store.selectedEntry();

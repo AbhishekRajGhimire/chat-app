@@ -57,6 +57,12 @@ export class MobileThreadComponent implements OnInit {
     this.replyingTo = null;
   }
 
+  onFilesPicked(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    if (input.files?.length) this.store.addFiles(input.files);
+    input.value = '';
+  }
+
   onKeydown(e: KeyboardEvent): void {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); }
   }

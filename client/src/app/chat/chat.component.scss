@@ -525,6 +525,25 @@
 }
 
 // --- Composer --------------------------------------------------------------
+.composer-clip {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: $rojin-ink-soft;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: background $rojin-dur-fast $rojin-ease, color $rojin-dur-fast $rojin-ease;
+
+  &:hover {
+    background: rgba(176, 141, 87, 0.12);
+    color: $rojin-gold;
+  }
+}
+
 .message-input {
   display: flex;
   align-items: flex-end;
