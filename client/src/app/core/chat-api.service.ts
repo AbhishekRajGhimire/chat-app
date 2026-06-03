@@ -58,6 +58,9 @@ export class ChatApi {
   directoryUsers(): Observable<DirectoryUser[]> {
     return this.http.get<DirectoryUser[]>('/api/directory_users', { headers: this.headers() });
   }
+  getMyProfile(): Observable<any> {
+    return this.http.get<any>('/api/me/profile', { headers: this.headers() });
+  }
   createGroup(title: string, members: string[]): Observable<any> {
     return this.http.post<any>('/api/groups', { title, members }, { headers: this.headers() });
   }
@@ -72,5 +75,13 @@ export class ChatApi {
   }
   leaveGroup(cid: number): Observable<any> {
     return this.http.post<any>(`/api/groups/${cid}/leave`, {}, { headers: this.headers() });
+  }
+  uploadAvatar(file: File): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<any>('/api/me/avatar', form, { headers: this.headers() });
+  }
+  deleteAvatar(): Observable<any> {
+    return this.http.delete<any>('/api/me/avatar', { headers: this.headers() });
   }
 }

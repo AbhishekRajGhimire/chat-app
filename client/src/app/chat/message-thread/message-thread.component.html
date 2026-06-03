@@ -6,7 +6,7 @@
       }
       @if (showSenderHeader(thread, i)) {
         <div class="sender-head">
-          <app-avatar [name]="message.from" [seed]="message.from" [size]="22"></app-avatar>
+          <app-avatar [name]="message.from" [seed]="message.from" [imageUrl]="avatarSrc(message.senderAvatarUrl)" [size]="22"></app-avatar>
           <span class="sender-head__name" [style.color]="senderColor(message.from)">{{ message.from }}</span>
         </div>
       }

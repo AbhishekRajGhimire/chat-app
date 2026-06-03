@@ -16,6 +16,7 @@ import { ChatApi } from '../core/chat-api.service';
 import { ConversationEntry, DirectoryUser, toEntry } from '../core/models/conversation.model';
 import { Message } from '../core/models/message.model';
 import { GroupCreateDialogComponent } from './group-create-dialog/group-create-dialog.component';
+import { avatarSrc } from '../core/avatar-url';
 
 /**
  * Thin VIEW over `ChatStore`. All chat state + data + business logic lives in
@@ -36,6 +37,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   /** Convenience: my username (echoes the store; used in the template). */
   readonly currentUser: string;
+  readonly avatarSrc = avatarSrc;
   toolbarLabel = '';
 
   // --- New Chat directory + search (view state) ----------------------------

@@ -112,6 +112,12 @@ Reactions, reply, and edit/delete all key on a **`client_message_id`** — a UUI
 - Mobile shell = bottom tab bar (**Chats / Calls / People**) + full-screen thread pushed on conversation open; Profile is a pushed screen reached from the top-bar avatar. Touch gestures (swipe-back, swipe-to-reply, pull-to-refresh, long-press) live in `client/src/app/mobile/gestures/` (`GesturesModule`).
 - The backend REST + Socket.IO API is the **stable contract** — a future native app would re-implement only the transport layer (`ChatApi` + `RealtimeClient`) against the same endpoints and events.
 
+### Avatars
+- Photos are **cropped and exported client-side** (512×512 JPEG) by `AvatarCropperComponent` (in `UiModule`) using `createImageBitmap` for EXIF-aware orientation, then uploaded via `POST /api/me/avatar` (multipart). Bytes are stored through **`chat/storage.py`** (`UserProfile.avatar_key` + `avatar_mime`); swap that module for S3/MinIO without touching any other code.
+- Avatars are **org-public**: `GET /api/avatars/<username>?token=<jwt>` accepts the JWT in the query string (same pattern as attachments and Socket.IO), requires any valid member token, and serves the image `inline` + `X-Content-Type-Options: nosniff`. 401 if the token is bad, 404 if no avatar is set.
+- The `avatar_url` field is **computed and cache-busted** (`/api/avatars/<username>?v=<key[:8]>`) on every read — never stored. It is propagated through all person feeds: `chats_history`, `directory_users`, group members, and `serialize_messages` (`sender_avatar_url` per message).
+- On the client, `AvatarComponent` renders any `imageUrl` binding; the pure helper **`avatarSrc(path)`** appends the viewer's JWT token to the path. Both are wired across the sidebar, conversation header, group thread sender headers, People directory, member panel, and profile screens.
+
 ### Angular version
 `@angular/*` is on stable **21.2.x** (upgraded from a 13.0.0 prerelease via stepwise `ng update`). Material uses the **MDC** components with **M3** token theming — `mat.define-theme` in `client/src/styles.scss`, with the brand palette in `client/src/app/ui/styles/_m3-theme.scss` (generated from the seed `#4a154b`). The app still uses **NgModules** (no standalone migration) and the webpack `@angular-devkit/build-angular:browser` builder (esbuild/`application` builder intentionally not adopted). Upgrade one major at a time via `ng update`.
 

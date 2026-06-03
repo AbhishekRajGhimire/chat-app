@@ -19,6 +19,7 @@ from .conversations import (
     user_conversation_ids,
 )
 from .database import connection, cursor
+from .profile import _avatar_path
 from .push import send_push_to_user
 
 from chat import app, online_users, socketio
@@ -216,7 +217,8 @@ def get_chats_history():
              ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message,
             (SELECT m.created_at FROM Message m
              WHERE m.conversation_id = c.id
-             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at
+             ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_at,
+            p.avatar_key
         FROM Conversation c
         JOIN ConversationMember ms ON ms.conversation_id = c.id AND ms.user_id = ?
         JOIN ConversationMember mp ON mp.conversation_id = c.id AND mp.user_id != ms.user_id
@@ -234,6 +236,7 @@ def get_chats_history():
             "last_message": r[3],
             "last_message_at": r[4],
             "unread_count": unread_count(int(r[0]), me_id),
+            "avatar_url": _avatar_path(r[1], r[5]),
         }
         for r in cursor.fetchall()
     ]
@@ -286,7 +289,8 @@ def directory_users():
     cursor.execute(
         """
         SELECT u.username,
-            COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name
+            COALESCE(NULLIF(TRIM(p.display_name), ''), u.username) AS display_name,
+            p.avatar_key
         FROM User u
         LEFT JOIN UserProfile p ON p.user_id = u.id
         WHERE u.username != ?
@@ -296,7 +300,8 @@ def directory_users():
     )
     rows = cursor.fetchall()
     return jsonify(
-        [{"username": row[0], "display_name": row[1]} for row in rows]
+        [{"username": row[0], "display_name": row[1],
+          "avatar_url": _avatar_path(row[0], row[2])} for row in rows]
     )
 
 

@@ -1,7 +1,7 @@
 <header class="m-top">
   <h1 class="m-top__title">People</h1>
   <a routerLink="/m/profile" class="m-top__me" aria-label="Profile">
-    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [size]="32"></app-avatar>
+    <app-avatar [name]="store.currentUser" [seed]="store.currentUser" [imageUrl]="avatarSrc(store.myAvatarUrl())" [size]="32"></app-avatar>
   </a>
 </header>
 
@@ -39,7 +39,7 @@
     @for (u of filtered; track u.username) {
       <button type="button" class="m-row" (click)="openDm(u)">
         <span class="m-row__av">
-          <app-avatar [name]="u.display_name" [seed]="u.username" [size]="46"></app-avatar>
+          <app-avatar [name]="u.display_name" [seed]="u.username" [imageUrl]="avatarSrc(u.avatar_url)" [size]="46"></app-avatar>
           @if (store.isOnline(u.username)) {
             <span class="m-row__dot"></span>
           }

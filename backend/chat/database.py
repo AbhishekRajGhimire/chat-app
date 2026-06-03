@@ -203,6 +203,14 @@ for _col in ("reply_to", "edited_at", "deleted_at"):
         cursor.execute(f"ALTER TABLE Message ADD COLUMN {_col} TEXT")
 connection.commit()
 
+# Idempotent: avatar columns on UserProfile.
+cursor.execute("PRAGMA table_info(UserProfile)")
+_profile_cols = {row[1] for row in cursor.fetchall()}
+for _col in ("avatar_key", "avatar_mime"):
+    if _col not in _profile_cols:
+        cursor.execute(f"ALTER TABLE UserProfile ADD COLUMN {_col} TEXT")
+connection.commit()
+
 # Give pre-existing messages stable public ids.
 _backfill_client_message_ids()
 

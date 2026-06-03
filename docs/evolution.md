@@ -96,6 +96,19 @@ The design isolates all byte I/O behind **`chat/storage.py`** — the rest of th
 
 ---
 
+## Avatar uploads — delivered
+
+Users can set a profile photo via a custom **crop/zoom dialog** (`AvatarCropperComponent`). The client exports a **512×512 JPEG** using `createImageBitmap` (EXIF-aware), so the server receives a normalised image regardless of camera orientation. Bytes flow through the existing `chat/storage.py` seam (`UserProfile.avatar_key` + `avatar_mime`), keeping byte I/O isolated from the rest of the backend.
+
+Avatars are rendered everywhere a person appears: the sidebar, conversation header, group thread sender rows, People directory, member panel, and profile screens. `AvatarComponent` + the `avatarSrc()` token-appending helper are shared across desktop and mobile shells.
+
+### Intentional scope limits (deferred)
+
+- **No live avatar push.** Other members see a new photo on their next data load (sidebar refresh, thread open, etc.) — no real-time broadcast event was added.
+- **No group avatars.** Group conversations keep the existing monogram placeholder; only user profiles have uploaded photos.
+
+---
+
 ## Video calling (planned — placeholder in UI today)
 
 A disabled **"🎥 Call — coming soon"** control already sits in the conversation header (both DMs and groups) so the seam exists. The intended implementation, as its own future sub-project:

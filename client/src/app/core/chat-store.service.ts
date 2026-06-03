@@ -32,6 +32,8 @@ export class ChatStore {
   readonly hasUploading = computed(() => this.pendingAttachments().some(p => p.status === 'uploading'));
 
   readonly currentUser: string = localStorage.getItem('username') || '';
+  /** The current user's own avatar path (for self-avatars in toolbars/headers). */
+  readonly myAvatarUrl = signal<string | null>(null);
 
   // --- derived state -------------------------------------------------------
   readonly sortedConversations = computed<ConversationEntry[]>(() => {
@@ -88,6 +90,15 @@ export class ChatStore {
     this.realtime.messageEdited$.subscribe((d) => this.zone.run(() => this.onMessageEdited(d)));
     this.realtime.messageDeleted$.subscribe((d) => this.zone.run(() => this.onMessageDeleted(d)));
     this.loadConversations();
+    this.chatApi.getMyProfile().subscribe({
+      next: (p) => this.myAvatarUrl.set(p?.avatar_url ?? null),
+      error: () => {},
+    });
+  }
+
+  /** Update the cached own-avatar (call after the profile screen uploads/removes). */
+  setMyAvatarUrl(url: string | null): void {
+    this.myAvatarUrl.set(url ?? null);
   }
 
   /** (Re)load the sidebar. Server-backed unread is authoritative. */
@@ -531,6 +542,7 @@ export class ChatStore {
       editedAt: raw.edited_at ?? null,
       deleted: !!raw.deleted,
       attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
+      senderAvatarUrl: raw.sender_avatar_url ?? null,
     };
   }
 }

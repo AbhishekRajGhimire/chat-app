@@ -5,6 +5,7 @@ import { ChatStore } from '../../core/chat-store.service';
 import { ChatApi } from '../../core/chat-api.service';
 import { ConversationEntry } from '../../core/models/conversation.model';
 import { GroupCreateDialogComponent } from '../../chat/group-create-dialog/group-create-dialog.component';
+import { avatarSrc } from '../../core/avatar-url';
 
 @Component({
   selector: 'app-mobile-chats',
@@ -13,6 +14,8 @@ import { GroupCreateDialogComponent } from '../../chat/group-create-dialog/group
   standalone: false,
 })
 export class MobileChatsComponent {
+  readonly avatarSrc = avatarSrc;
+
   constructor(public store: ChatStore, private router: Router,
               private dialog: MatDialog, private chatApi: ChatApi) {}
 

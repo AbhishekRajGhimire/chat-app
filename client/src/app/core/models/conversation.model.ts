@@ -12,6 +12,7 @@ export interface ConversationEntry {
   last_message?: string | null;
   last_message_at?: string | null;
   unreadCount?: number;
+  avatarUrl?: string | null;
 }
 
 /** Raw entry shape returned by GET /api/chats_history (DMs + groups). */
@@ -25,6 +26,7 @@ export interface RawConversation {
   last_message?: string | null;
   last_message_at?: string | null;
   unread_count?: number;
+  avatar_url?: string | null;
 }
 
 export function toEntry(raw: RawConversation): ConversationEntry {
@@ -48,7 +50,8 @@ export function toEntry(raw: RawConversation): ConversationEntry {
     last_message: raw.last_message ?? null,
     last_message_at: raw.last_message_at ?? null,
     unreadCount: 0,
+    avatarUrl: raw.avatar_url ?? null,
   };
 }
 
-export interface DirectoryUser { username: string; display_name: string; }
+export interface DirectoryUser { username: string; display_name: string; avatar_url?: string | null; }
