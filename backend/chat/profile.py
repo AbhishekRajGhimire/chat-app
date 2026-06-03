@@ -13,6 +13,13 @@ def _utc_now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
+def _avatar_path(username: str, avatar_key) -> str | None:
+    """Public, cache-busted avatar URL path (or None). Caller appends &token=."""
+    if not avatar_key:
+        return None
+    return f"/api/avatars/{username}?v={avatar_key[:8]}"
+
+
 def _ensure_profile_row(user_id: int, username: str) -> None:
     cursor.execute("SELECT 1 FROM UserProfile WHERE user_id=?", (user_id,))
     if cursor.fetchone():
