@@ -392,7 +392,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   // --- sending -------------------------------------------------------------
   sendMessage(): void {
     const e = this.store.selectedEntry();
-    if (!e || !this.newMessage.trim()) return;
+    const hasReady = this.store.pendingAttachments().some((p) => p.status === 'done');
+    if (!e || (!this.newMessage.trim() && !hasReady)) return;
     this.store.sendMessage(e, this.newMessage, this.replyingTo);
     this.newMessage = '';
     this.replyingTo = null;
