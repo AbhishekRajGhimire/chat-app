@@ -1,10 +1,13 @@
 import { Component, ElementRef, OnInit, ViewChild, effect } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
 import { ChatStore } from '../../core/chat-store.service';
+import { ChatApi } from '../../core/chat-api.service';
 import { ConversationEntry } from '../../core/models/conversation.model';
 import { Message } from '../../core/models/message.model';
 import { avatarSrc } from '../../core/avatar-url';
+import { AvatarCropperComponent } from '../../ui/avatar-cropper/avatar-cropper.component';
 
 @Component({
   selector: 'app-mobile-thread',
@@ -14,12 +17,19 @@ import { avatarSrc } from '../../core/avatar-url';
 })
 export class MobileThreadComponent implements OnInit {
   @ViewChild('scrollHost') private scrollHost?: ElementRef<HTMLElement>;
+  @ViewChild('groupPhotoInput') groupPhotoInput?: ElementRef<HTMLInputElement>;
   readonly avatarSrc = avatarSrc;
   key = '';
   newMessage = '';
   replyingTo: Message | null = null;
 
-  constructor(public store: ChatStore, private route: ActivatedRoute, private location: Location) {
+  constructor(
+    public store: ChatStore,
+    private route: ActivatedRoute,
+    private location: Location,
+    private dialog: MatDialog,
+    private api: ChatApi,
+  ) {
     effect(() => { this.store.openThread(); this.store.selectedKey(); queueMicrotask(() => this.scrollToBottom()); });
   }
 
@@ -45,6 +55,22 @@ export class MobileThreadComponent implements OnInit {
   get peerUsername(): string { return this.entry.username || ''; }
 
   back(): void { this.location.back(); }
+
+  pickGroupPhoto(): void {
+    if (this.isGroup) this.groupPhotoInput?.nativeElement.click();
+  }
+
+  onPickGroupAvatar(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0]; input.value = '';
+    const entry = this.entry;
+    if (!file || entry.kind !== 'group' || !entry.conversationId) return;
+    this.dialog.open(AvatarCropperComponent, { data: { file }, panelClass: 'rojin-dialog', autoFocus: false })
+      .afterClosed().subscribe((cropped?: File) => {
+        if (cropped) this.api.uploadGroupAvatar(entry.conversationId!, cropped)
+          .subscribe({ next: (g) => { entry.avatarUrl = g.avatar_url ?? null; } });
+      });
+  }
 
   monogram(title: string): string {
     const p = (title || '?').trim().split(/\s+/).filter(Boolean);

@@ -143,6 +143,11 @@
           <div class="member-panel">
             <div class="member-panel__head">
               <span class="member-panel__title">Members</span>
+              <button type="button" class="member-panel__photo" (click)="groupPhotoInput.click()">Change photo</button>
+              <input #groupPhotoInput type="file" accept="image/*" hidden (change)="onPickGroupAvatar($event)">
+              @if (selectedEntry?.avatarUrl) {
+                <button type="button" class="member-panel__photo" (click)="removeGroupAvatar()">Remove photo</button>
+              }
               <button type="button" class="member-panel__leave" (click)="leaveGroup()">Leave group</button>
             </div>
             <div class="member-panel__list">

@@ -3,11 +3,14 @@
     <mat-icon>arrow_back</mat-icon>
   </button>
   @if (isGroup) {
-    @if (entry.avatarUrl) {
-      <app-avatar [name]="title" [seed]="entry.key" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
-    } @else {
-      <span class="mt-mono">{{ monogram(title) }}</span>
-    }
+    <button type="button" class="mt-avatar-btn" (click)="pickGroupPhoto()" aria-label="Change group photo">
+      @if (entry.avatarUrl) {
+        <app-avatar [name]="title" [seed]="entry.key" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
+      } @else {
+        <span class="mt-mono">{{ monogram(title) }}</span>
+      }
+    </button>
+    <input #groupPhotoInput type="file" accept="image/*" hidden (change)="onPickGroupAvatar($event)">
   } @else {
     <app-avatar [name]="title" [seed]="peerUsername" [imageUrl]="avatarSrc(entry.avatarUrl)" [size]="34"></app-avatar>
   }

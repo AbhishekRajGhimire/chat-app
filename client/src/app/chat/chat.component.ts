@@ -16,6 +16,7 @@ import { ChatApi } from '../core/chat-api.service';
 import { ConversationEntry, DirectoryUser, toEntry } from '../core/models/conversation.model';
 import { Message } from '../core/models/message.model';
 import { GroupCreateDialogComponent } from './group-create-dialog/group-create-dialog.component';
+import { AvatarCropperComponent } from '../ui/avatar-cropper/avatar-cropper.component';
 import { avatarSrc } from '../core/avatar-url';
 
 /**
@@ -389,6 +390,25 @@ export class ChatComponent implements OnInit, OnDestroy {
       },
       error: (error) => this.redirectIfUnauth(error),
     });
+  }
+
+  // --- group photo ---------------------------------------------------------
+  onPickGroupAvatar(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0]; input.value = '';
+    const entry = this.store.selectedEntry();
+    if (!file || !entry || entry.kind !== 'group' || !entry.conversationId) return;
+    this.dialog.open(AvatarCropperComponent, { data: { file }, panelClass: 'rojin-dialog', autoFocus: false })
+      .afterClosed().subscribe((cropped?: File) => {
+        if (cropped) this.chatApi.uploadGroupAvatar(entry.conversationId!, cropped)
+          .subscribe({ next: (g) => { entry.avatarUrl = g.avatar_url ?? null; } });
+      });
+  }
+
+  removeGroupAvatar(): void {
+    const entry = this.store.selectedEntry();
+    if (!entry || entry.kind !== 'group' || !entry.conversationId) return;
+    this.chatApi.deleteGroupAvatar(entry.conversationId).subscribe({ next: (g) => { entry.avatarUrl = g.avatar_url ?? null; } });
   }
 
   // --- sending -------------------------------------------------------------
