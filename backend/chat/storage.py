@@ -31,5 +31,6 @@ def open_path(storage_key: str) -> str:
 def delete(storage_key: str) -> None:
     try:
         (_UPLOAD_DIR / storage_key).unlink()
-    except FileNotFoundError:
+    except OSError:
+        # Covers FileNotFoundError and Windows file-locking (PermissionError/WinError 32).
         pass
