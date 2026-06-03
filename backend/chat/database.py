@@ -124,6 +124,25 @@ def _create_conversation_schema():
     )
     cursor.execute(
         """
+        CREATE TABLE IF NOT EXISTS MessageAttachment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_message_id TEXT,
+            conversation_id INTEGER REFERENCES Conversation(id) ON DELETE CASCADE,
+            uploader_user_id INTEGER NOT NULL REFERENCES User(id) ON DELETE CASCADE,
+            storage_key TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            mime TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS ix_attachment_cmid ON MessageAttachment(client_message_id)"
+    )
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS UserProfile (
             user_id INTEGER PRIMARY KEY,
             display_name TEXT,
