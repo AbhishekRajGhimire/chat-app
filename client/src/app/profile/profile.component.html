@@ -23,6 +23,14 @@
         <p class="profile-lead">
           Display name is shown in the directory and chat lists. Username stays your login id.
         </p>
+
+        <div class="avatar-edit">
+          <app-avatar [name]="form.get('display_name')?.value || ''" [seed]="form.get('display_name')?.value || ''" [imageUrl]="avatarImage" [size]="96"></app-avatar>
+          <button type="button" class="avatar-edit__btn" (click)="avatarInput.click()" aria-label="Change photo"><mat-icon>photo_camera</mat-icon></button>
+          <input #avatarInput type="file" accept="image/*" hidden (change)="onPickAvatar($event)">
+          @if (avatarImage) { <button type="button" class="avatar-edit__remove" (click)="removeAvatar()">Remove photo</button> }
+        </div>
+
         <mat-form-field appearance="outline" class="profile-field">
           <mat-label>Display name</mat-label>
           <input matInput formControlName="display_name" placeholder="How others see you" />
@@ -30,16 +38,6 @@
           @if (form.get('display_name')?.hasError('maxlength')) {
             <mat-error>
               At most 120 characters
-            </mat-error>
-          }
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="profile-field">
-          <mat-label>Avatar URL</mat-label>
-          <input matInput formControlName="avatar_url" placeholder="https://…" />
-          <mat-hint>Image URL only; hosting is up to you</mat-hint>
-          @if (form.get('avatar_url')?.hasError('maxlength')) {
-            <mat-error>
-              URL too long
             </mat-error>
           }
         </mat-form-field>

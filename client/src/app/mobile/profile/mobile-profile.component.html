@@ -13,7 +13,12 @@
     </div>
   } @else {
     <section class="m-avatar-section">
-      <app-avatar [name]="displayName || username" [seed]="username" [size]="72"></app-avatar>
+      <div class="avatar-edit">
+        <app-avatar [name]="displayName || username" [seed]="username" [imageUrl]="avatarImage" [size]="72"></app-avatar>
+        <button type="button" class="avatar-edit__btn" (click)="avatarInput.click()" aria-label="Change photo"><mat-icon>photo_camera</mat-icon></button>
+        <input #avatarInput type="file" accept="image/*" hidden (change)="onPickAvatar($event)">
+        @if (avatarImage) { <button type="button" class="avatar-edit__remove" (click)="removeAvatar()">Remove photo</button> }
+      </div>
       <span class="m-avatar-section__name">{{ displayName || username }}</span>
       <span class="m-avatar-section__handle">&#64;{{ username }}</span>
     </section>
