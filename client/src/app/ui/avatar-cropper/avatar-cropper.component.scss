@@ -1,0 +1,90 @@
+@import '../styles/tokens';
+
+.cropper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 88vw;
+  padding: 22px 22px 18px;
+  background: $rojin-paper;
+  border-radius: $rojin-radius-lg;
+  color: $rojin-ink;
+
+  &__title {
+    margin: 0;
+    text-align: center;
+    font-family: $rojin-font-display;
+    font-size: 1.18rem;
+    font-weight: 600;
+    color: $rojin-ink;
+  }
+
+  &__view {
+    width: 260px;
+    height: 260px;
+    position: relative;
+    overflow: hidden;
+    margin: 14px auto;
+    touch-action: none; // REQUIRED: keep touch drag/pan from scrolling the page
+    cursor: grab;
+    background: #1a0c1b;
+    border-radius: 6px;
+
+    &:active { cursor: grabbing; }
+  }
+
+  &__img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    user-select: none;
+    will-change: transform; // transform (incl. -50% centering) supplied via [ngStyle]
+  }
+
+  &__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 999px rgba(20, 8, 20, 0.55) inset; // mask square down to a circle
+    pointer-events: none;
+  }
+
+  &__zoom {
+    width: 100%;
+    accent-color: $rojin-gold;
+    cursor: pointer;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  &__cancel,
+  &__save {
+    border: none;
+    cursor: pointer;
+    font-family: $rojin-font-body;
+    font-size: 0.95rem;
+    padding: 9px 18px;
+    border-radius: $rojin-radius-md;
+    transition: filter $rojin-dur-fast $rojin-ease;
+  }
+
+  &__cancel {
+    background: transparent;
+    color: $rojin-ink-soft;
+
+    &:hover { color: $rojin-ink; }
+  }
+
+  &__save {
+    background: $rojin-gold;
+    color: $rojin-primary-dark;
+    font-weight: 700;
+
+    &:hover { filter: brightness(1.06); }
+  }
+}

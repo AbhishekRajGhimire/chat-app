@@ -1,0 +1,17 @@
+<div class="cropper">
+  <h3 class="cropper__title">Adjust photo</h3>
+  <div #view class="cropper__view"
+       (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)"
+       (pointerup)="onPointerUp()" (pointerleave)="onPointerUp()" (wheel)="onWheel($event)">
+    @if (ready) {
+      <img class="cropper__img" [src]="imgSrc" [ngStyle]="imgStyle" draggable="false" alt="">
+    }
+    <div class="cropper__ring"></div>
+  </div>
+  <input class="cropper__zoom" type="range" min="1" max="4" step="0.01"
+         [value]="zoom" (input)="onZoomInput(+$any($event.target).value)">
+  <div class="cropper__actions">
+    <button type="button" class="cropper__cancel" (click)="cancel()">Cancel</button>
+    <button type="button" class="cropper__save" (click)="save()">Save</button>
+  </div>
+</div>
