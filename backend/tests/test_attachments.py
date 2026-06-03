@@ -90,6 +90,22 @@ def test_serve_member_gets_bytes_and_disposition(client, make_user):
     assert "inline" in r.headers.get("Content-Disposition", "")
 
 
+def test_serve_refuses_deleted_message_attachment(client, make_user):
+    alice = make_user("alice"); make_user("bob")
+    cid = client.post("/api/groups", json={"title": "G", "members": ["bob"]},
+                      headers=alice["headers"]).get_json()["conversation_id"]
+    up = client.post("/api/attachments",
+                     data={"file": (_io.BytesIO(b"DATA"), "p.png", "image/png")},
+                     content_type="multipart/form-data", headers=alice["headers"]).get_json()
+    client.post(f"/api/groups/{cid}/messages",
+                json={"body": "", "client_message_id": "att-del", "attachment_ids": [up["id"]]},
+                headers=alice["headers"])
+    client.delete("/api/messages/att-del", headers=alice["headers"])
+    token = alice["headers"]["Authorization"].split()[1]
+    r = client.get(f"/api/attachments/{up['id']}?token={token}")
+    assert r.status_code == 404
+
+
 def test_serve_non_member_forbidden(client, make_user):
     alice = make_user("alice"); make_user("bob"); carol = make_user("carol")
     cid = client.post("/api/groups", json={"title": "G", "members": ["bob"]},

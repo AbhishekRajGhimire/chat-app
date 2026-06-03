@@ -60,15 +60,17 @@ def serve_attachment(aid):
     if me is None:
         return jsonify({"error": "auth required"}), 401
     cursor.execute(
-        "SELECT storage_key, filename, mime, kind, conversation_id "
-        "FROM MessageAttachment "
-        "WHERE id = ?",
+        "SELECT a.storage_key, a.filename, a.mime, a.kind, a.conversation_id, m.deleted_at "
+        "FROM MessageAttachment a "
+        "LEFT JOIN Message m ON m.client_message_id = a.client_message_id "
+        "WHERE a.id = ?",
         (aid,),
     )
     row = cursor.fetchone()
-    if not row or row[4] is None:
+    # Unlinked (no conversation) or the message was deleted → not served.
+    if not row or row[4] is None or row[5] is not None:
         return jsonify({"error": "not found"}), 404
-    storage_key, filename, mime, kind, conv_id = row
+    storage_key, filename, mime, kind, conv_id, _deleted = row
     if not is_member(int(conv_id), me):
         return jsonify({"error": "forbidden"}), 403
     resp = send_file(storage.open_path(storage_key), mimetype=mime,
