@@ -29,12 +29,14 @@ Controls that are “enough” on localhost are often **not** enough on the inte
 - **Socket.IO connect**: Connections are **rejected** without a valid access token (same secret as REST). The token is sent in the Engine.IO handshake **`token`** query param; the server decodes it with **`flask_jwt_extended.decode_token`**, joins **`join_room(username)`** from the JWT **`sub`**, and tracks **`request.sid → username`** for the session.
 - **`send_message`**: The server **ignores any client `from` field** and uses the authenticated username bound to the socket session only.
 - **JWT expiry (LAN default)**: Access tokens expire after **`JWT_ACCESS_TOKEN_DAYS`** (default **7**); set to **`0`** / **`never`** in `.env` to disable expiry for local dev only.
-- **Secrets**: **`SECRET_KEY`** and **`JWT_SECRET_KEY`** load from the environment (optional **`backend/.env`** via **`python-dotenv`**); dev fallbacks remain in code but should be overridden on office/LAN machines.
+- **Secrets (fail-fast)**: **`SECRET_KEY`** and **`JWT_SECRET_KEY`** load from the environment (optional **`backend/.env`** via **`python-dotenv`**). When **`FLASK_DEBUG`** is off (the default), `chat/__init__.py` **refuses to start** unless both are set — the committed dev fallbacks apply **only when `FLASK_DEBUG=true`**. So a real/LAN run can't silently sign JWTs with a repo-known secret.
+- **Attachment & avatar serving (token-in-URL, access-checked)**: file/image bytes are served by `GET /api/attachments/<id>?token=<jwt>`, `GET /api/avatars/<username>?token=<jwt>`, and `GET /api/groups/<id>/avatar?token=<jwt>` — the JWT rides in the **query string** (same pattern as the Socket.IO handshake, needed for `<img>` tags). Every route **decodes and verifies** the token and **checks access**: attachments are **conversation-membership-checked** (and a deleted message's bytes return **404**); group avatars are **members-only** (**403** for non-members); user avatars are **org-public** (any valid member token). All file bytes flow through the single **`chat/storage.py`** seam.
+- **XSS guard on served files**: images are served **`Content-Disposition: inline`**; all other uploads use **`attachment`** (forced download, never rendered in-page) plus **`X-Content-Type-Options: nosniff`** so a mislabeled file can't be sniffed into executable content.
 
 ### Gaps you should know about
 
-1. **JWT in the Socket.IO query string**  
-   - The access token may appear in **URLs/proxy logs** on the handshake. Acceptable on many LANs; avoid logging query strings at the edge, or move to a hardened transport/session design if that becomes a concern.
+1. **JWT in the query string (Socket.IO handshake + file serving)**  
+   - The access token appears in the URL on the Socket.IO handshake **and** on the `?token=` file/avatar serve routes (`/api/attachments/<id>`, `/api/avatars/<user>`, `/api/groups/<id>/avatar`), so it may land in **URLs/proxy/CDN logs**. Acceptable on many LANs; avoid logging query strings at the edge, or move to short-lived signed URLs / a hardened session design if that becomes a concern.
 
 2. **Stale or invalid tokens**  
    - If the socket **cannot connect** (e.g. expired JWT after **`JWT_ACCESS_TOKEN_DAYS`**), presence and realtime delivery stop; **sign in again** or refresh the page after obtaining a new token. REST calls that return **401** already redirect the SPA to sign-in.
@@ -43,7 +45,7 @@ Controls that are “enough” on localhost are often **not** enough on the inte
    - Without **`CORS_ORIGINS`** in `.env`, CORS and Socket.IO stay **permissive** (`*`) for easy multi-device LAN dev. Set **`CORS_ORIGINS`** to a comma-separated list of real UI origins when you want a stricter boundary.
 
 4. **Flask `debug`**  
-   - Defaults to **`FLASK_DEBUG=true`** for local demos. Set **`FLASK_DEBUG=false`** in `.env` on shared office machines (disables the interactive debugger).
+   - Defaults to **`FLASK_DEBUG=false`** (fail-fast: the server won't start without `SECRET_KEY` + `JWT_SECRET_KEY`). Set **`FLASK_DEBUG=true`** only for the local "just run it" path — that enables the interactive debugger **and** the committed dev secret fallbacks, so never use it on a shared/LAN machine.
 
 5. **Rate limiting & lockout**  
    - No built-in limits on sign-in, sign-up, or messaging → **brute-force** and **spam** are easier on an exposed deployment.
@@ -61,6 +63,8 @@ Use this as a target architecture, not a single-day task.
 
 - [ ] Require **`@jwt_required()`** on **all** endpoints that read or write user-specific data.
 - [x] **DM HTTP API**: sender from **`get_jwt_identity()`**; JSON body on **`POST /api/dm/messages`** (still add **max body size** / validation in production).
+- [x] **File/avatar serving** is access-checked (membership for attachments, members-only for group avatars, org-public for user avatars) with an **XSS guard** (inline images; `attachment` + `nosniff` for everything else).
+- [ ] **Upload validation** beyond the **25 MB** cap: in production, validate/normalize MIME types server-side, scan for malware, and consider re-encoding images; bytes currently flow through `chat/storage.py` to local disk (swap for object storage + signed URLs).
 - [x] **JWT expiry** enabled by default (configurable **`JWT_ACCESS_TOKEN_DAYS`**); add **refresh tokens** if you need long sessions without periodic sign-in.
 - [x] Load **`SECRET_KEY`** / **`JWT_SECRET_KEY`** from **environment** (see **`backend/.env.example`**); still load DB path from env if you move beyond file SQLite.
 
@@ -124,8 +128,12 @@ You may accept slightly more risk than production, but **insider threat** and **
 | Flask + JWT + CORS + Socket.IO defaults | `backend/chat/__init__.py` |
 | Sign up / sign in / sign out | `backend/chat/user.py` |
 | DMs, history, directory, socket handlers | `backend/chat/chatfunc.py` |
+| Group REST + group-avatar serve (members-only) | `backend/chat/groups.py` |
+| Message actions (react/edit/delete, owner-only) | `backend/chat/messages.py` |
+| Attachment upload + access-checked serve | `backend/chat/attachments.py` |
+| File-bytes storage seam (only code touching bytes) | `backend/chat/storage.py` |
 | Direct conversation helpers | `backend/chat/conversations.py` |
-| Profiles | `backend/chat/profile.py` |
+| Profiles + user-avatar upload / org-public serve | `backend/chat/profile.py` |
 | Schema / legacy reset | `backend/chat/database.py` |
 | Server entry (debug, host, port) | `backend/main.py` |
 | Client token usage | `client/src/app/chat/chat.component.ts`, `auth.service.ts` |
@@ -142,4 +150,4 @@ You may accept slightly more risk than production, but **insider threat** and **
 
 ## Summary
 
-For **home LAN and office intranets**, the app now ties **realtime presence and delivery** to the same **JWT** as REST (with configurable **expiry** and **env-backed secrets**). Remaining priorities for stricter environments are **`FLASK_DEBUG=false`**, optional **`CORS_ORIGINS`**, **rate limiting**, **HTTPS + tight CORS** if anything is ever internet-adjacent, and avoiding **token leakage** in proxy logs (handshake query string).
+For **home LAN and office intranets**, the app now ties **realtime presence and delivery** to the same **JWT** as REST (with configurable **expiry**, **fail-fast env-backed secrets**, and access-checked + XSS-guarded **file/avatar serving**). Remaining priorities for stricter environments are **rate limiting**, **upload validation/scanning**, **HTTPS + tight CORS** if anything is ever internet-adjacent, and avoiding **token leakage** in proxy logs (the handshake + `?token=` serve query strings).

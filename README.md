@@ -1,6 +1,6 @@
 # Rojin — Real‑Time Chat (Angular 21 + Flask + Socket.IO)
 
-A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask + Flask‑SocketIO** backend over **SQLite**. JWT auth, **direct *and* group** conversations with **reactions, replies, and edit/delete**, live delivery, read receipts, a **distinct native‑style phone UI**, an installable **PWA**, and **Web Push** notifications — wrapped in a bespoke "Aubergine Atelier" visual design.
+A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask + Flask‑SocketIO** backend over **SQLite**. JWT auth, **direct *and* group** conversations with **reactions, replies, edit/delete, and file/image attachments**, **uploadable user *and* group avatars**, live delivery, read receipts, a **distinct native‑style phone UI**, an installable **PWA**, and **Web Push** notifications — wrapped in a bespoke "Aubergine Atelier" visual design.
 
 > The dev stack runs as two processes; the Angular dev server proxies `/api` and `/socket.io` to Flask. Deeper docs live in [`docs/`](./docs) and [`deployment/`](./deployment); agent/contributor guidance is in [`CLAUDE.md`](./CLAUDE.md).
 
@@ -10,6 +10,8 @@ A full‑stack real‑time chat app: an **Angular 21** SPA talking to a **Flask 
 - **Direct messages** — real‑time 1:1 chat with persistence.
 - **Group chats** — create groups, add/remove members, leave; live delivery via per‑conversation Socket.IO rooms; sender attribution in the thread.
 - **Message actions** — emoji **reactions**, **reply / quote**, and **edit / delete your own** messages, live across clients (DMs + groups), built on a client‑generated message id.
+- **File attachments** — send **images** (inline grid + lightbox) and **any file** (download chips), multiple per message, up to **25 MB** each; upload‑first flow with a pending tray + per‑file progress/retry, access‑checked serving behind a swappable storage seam (`chat/storage.py`).
+- **Avatars** — upload a profile photo via a built‑in **EXIF‑aware crop/zoom** dialog (exported 512×512 JPEG), rendered app‑wide with an initials fallback; **group photos** reuse the same machinery (any member can set one; monogram fallback otherwise).
 - **Adaptive UI** — a **two‑pane desktop** layout *and* a separate **native‑style phone UI**: bottom tab bar (Chats / Calls / People), full‑screen list ↔ thread, and touch gestures (swipe‑back, swipe‑to‑reply, pull‑to‑refresh, long‑press). The root redirects by viewport; the phone module is lazy‑loaded.
 - **Reliable send** — optimistic UI with a **failed‑state + retry** (messages never silently vanish).
 - **Unread + recency** — conversation list sorted most‑recent‑first with **last‑message previews**, **unread count badges**, and a tab‑title badge. Unread is **server‑backed** (survives reload, counts messages received while away).
@@ -41,8 +43,10 @@ backend/
     chatfunc.py          # DM REST, chats_history, Socket.IO events (per-conversation rooms)
     groups.py            # group REST endpoints (create/members/messages/read)
     messages.py          # message actions: reactions, edit, delete (keyed on client_message_id)
+    attachments.py       # file/image upload + access-checked, XSS-guarded serve
+    storage.py           # the only code that touches file bytes (swap for S3/MinIO)
     conversations.py     # conversation + room + read/unread + message-serialization helpers
-    profile.py           # JWT profile APIs
+    profile.py           # JWT profile APIs + user-avatar upload / org-public serve
     push.py              # Web Push (VAPID, subscriptions, send_push_to_user)
     database.py          # SQLite connection + schema + idempotent migrations
   tests/                 # pytest: auth, dm, groups, read, push, helpers, socket
@@ -105,13 +109,15 @@ The dev server proxies `/api/*` and `/socket.io/*` (WebSocket) to `http://localh
 **Conversations & messages** *(all JWT):*
 - `GET /api/chats_history` — DMs **and** groups, each tagged `kind`, with `unread_count`, last message + time
 - `GET /api/directory_users` — everyone except you (New‑Chat search)
-- `GET /api/dm/messages/<user>` → `{ messages, read_state }` · `POST /api/dm/messages` `{to_username, body, client_message_id, reply_to}` · `POST /api/dm/<user>/read`
+- `GET /api/dm/messages/<user>` → `{ messages, read_state }` · `POST /api/dm/messages` `{to_username, body, client_message_id, reply_to, attachment_ids}` · `POST /api/dm/<user>/read`
 - `POST /api/groups` `{title, members}` · `GET|PATCH /api/groups/<id>` · `POST /api/groups/<id>/members` · `DELETE /api/groups/<id>/members/<user>` · `POST /api/groups/<id>/leave`
-- `GET /api/groups/<id>/messages` → `{ messages, read_state }` · `POST /api/groups/<id>/messages` `{body, client_message_id, reply_to}` · `POST /api/groups/<id>/read`
+- `GET /api/groups/<id>/messages` → `{ messages, read_state }` · `POST /api/groups/<id>/messages` `{body, client_message_id, reply_to, attachment_ids}` · `POST /api/groups/<id>/read`
 
 **Message actions** *(JWT, keyed on `client_message_id`):* `POST /api/messages/<id>/react` `{emoji}` (toggle) · `PATCH /api/messages/<id>` `{body}` (edit, owner‑only) · `DELETE /api/messages/<id>` (soft delete, owner‑only)
 
-**Profiles** *(JWT):* `GET|PATCH /api/me/profile`, `GET /api/users/<user>/profile`
+**Attachments** *(JWT):* `POST /api/attachments` (multipart, ≤ 25 MB; linked to a message by `client_message_id` at send time) · `GET /api/attachments/<id>?token=<jwt>` (conversation‑membership‑checked; images `inline`, other files forced‑download + `nosniff`)
+
+**Profiles & avatars** *(JWT):* `GET|PATCH /api/me/profile`, `GET /api/users/<user>/profile` · `POST|DELETE /api/me/avatar` (multipart upload / remove) · `GET /api/avatars/<user>?token=<jwt>` (org‑public) · `POST|DELETE /api/groups/<id>/avatar` + `GET /api/groups/<id>/avatar?token=<jwt>` (members‑only)
 
 **Web Push** *(JWT):* `GET /api/push/vapid-key`, `POST /api/push/subscribe`, `POST /api/push/unsubscribe`
 
